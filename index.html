@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Franchise Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=7">
+</head>
+<body>
+
+<!-- ══════════════════════════════════ LOGIN GATE ═══════════════════════════ -->
+<div class="gate" id="loginGate">
+  <div class="gate-card">
+    <button type="button" class="gate-close" id="gateClose" hidden aria-label="ปิด">&times;</button>
+
+    <div class="gate-brand">
+      <div class="brand-mark">FC</div>
+      <div class="gate-brand-txt">
+        <b>Franchise Scorecard</b>
+        <span>กรุณาเข้าสู่ระบบเพื่อดูข้อมูล</span>
+      </div>
+    </div>
+
+    <!-- ฟอร์มเข้าสู่ระบบ -->
+    <div id="loginView">
+      <label class="gfld">
+        <span>Username</span>
+        <input type="text" id="loginUser" placeholder="ชื่อผู้ใช้งาน" autocomplete="username">
+        <em>ไม่ต้องใส่ @scg.com &bull; พิมพ์ตัวเล็กหรือตัวใหญ่ก็ได้</em>
+      </label>
+      <label class="gfld">
+        <span>Password</span>
+        <div class="pw">
+          <input type="password" id="loginPass" placeholder="รหัสผ่าน" autocomplete="current-password">
+          <button type="button" class="eye" data-target="loginPass" aria-label="แสดงรหัสผ่าน">
+            <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7zm0 11a4 4 0 110-8 4 4 0 010 8zm0-6.2a2.2 2.2 0 100 4.4 2.2 2.2 0 000-4.4z"/></svg>
+          </button>
+        </div>
+      </label>
+      <label class="gcheck"><input type="checkbox" id="rememberMe"> จดจำฉัน</label>
+      <div class="gmsg err" id="loginErr"></div>
+      <div class="gmsg ok" id="loginOk"></div>
+      <button class="gbtn" id="loginSubmit">เข้าสู่ระบบ</button>
+      <div class="glink"><button type="button" id="showReset">เปลี่ยนรหัสผ่าน</button></div>
+    </div>
+
+    <!-- ฟอร์มเปลี่ยนรหัสผ่าน -->
+    <div id="resetView" hidden>
+      <label class="gfld">
+        <span>Username</span>
+        <input type="text" id="resetUser" placeholder="ชื่อผู้ใช้งาน" autocomplete="username">
+      </label>
+      <label class="gfld">
+        <span>รหัสผ่านเดิม</span>
+        <div class="pw">
+          <input type="password" id="resetOld" placeholder="รหัสผ่านปัจจุบัน" autocomplete="current-password">
+          <button type="button" class="eye" data-target="resetOld" aria-label="แสดงรหัสผ่าน">
+            <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7zm0 11a4 4 0 110-8 4 4 0 010 8zm0-6.2a2.2 2.2 0 100 4.4 2.2 2.2 0 000-4.4z"/></svg>
+          </button>
+        </div>
+      </label>
+      <label class="gfld">
+        <span>รหัสผ่านใหม่</span>
+        <div class="pw">
+          <input type="password" id="resetNew" placeholder="รหัสผ่านใหม่" autocomplete="new-password">
+          <button type="button" class="eye" data-target="resetNew" aria-label="แสดงรหัสผ่าน">
+            <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7zm0 11a4 4 0 110-8 4 4 0 010 8zm0-6.2a2.2 2.2 0 100 4.4 2.2 2.2 0 000-4.4z"/></svg>
+          </button>
+        </div>
+      </label>
+      <label class="gfld">
+        <span>ยืนยันรหัสผ่านใหม่</span>
+        <div class="pw">
+          <input type="password" id="resetConfirm" placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง" autocomplete="new-password">
+          <button type="button" class="eye" data-target="resetConfirm" aria-label="แสดงรหัสผ่าน">
+            <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-9 7s4 7 9 7 9-4.5 9-7-4-7-9-7zm0 11a4 4 0 110-8 4 4 0 010 8zm0-6.2a2.2 2.2 0 100 4.4 2.2 2.2 0 000-4.4z"/></svg>
+          </button>
+        </div>
+      </label>
+      <div class="gmsg err" id="resetErr"></div>
+      <div class="gmsg ok" id="resetOk"></div>
+      <button class="gbtn" id="resetSubmit">เปลี่ยนรหัสผ่าน</button>
+      <div class="gnote" id="resetNote">
+        การเปลี่ยนรหัสผ่านนี้มีผลเฉพาะเบราว์เซอร์นี้เท่านั้น ไม่ได้ซิงก์ไปยังเครื่องอื่น
+      </div>
+      <div class="glink"><button type="button" id="showLogin">&larr; กลับไปหน้าเข้าสู่ระบบ</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ SIDEBAR ══════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="brand-mark">FC</div>
+    <div class="brand-txt">
+      <b>Franchise Scorecard</b>
+      <span>ผลคะแนนโรงงานแฟรนไชส์</span>
+    </div>
+  </div>
+
+  <nav class="nav" role="tablist" aria-label="เมนูหลัก">
+    <button class="nav-item active" role="tab" data-tab="plant" aria-selected="true">
+      <svg viewBox="0 0 24 24"><path d="M3 21V9l6-4v3l6-4v16H3zm12 0V9l6 4v8h-6z"/></svg>
+      <span>แยกบริษัท</span>
+    </button>
+    <button class="nav-item" role="tab" data-tab="overview" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v5h-8V3zM3 13h8v8H3v-8zm10-3h8v11h-8V10z"/></svg>
+      <span>ภาพรวม</span>
+    </button>
+    <button class="nav-item" role="tab" data-tab="deduct" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2zm0 6 7 12H5l7-12zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>
+      <span>หักคะแนน</span>
+    </button>
+  </nav>
+
+  <div class="side-foot">
+    <div class="side-stat"><span>โรงงานทั้งหมด</span><b id="sideTotal">–</b></div>
+    <div class="side-stat"><span>คะแนนเต็ม</span><b>100</b></div>
+    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 7</span></p>
+    <div class="side-user" id="sideUser" hidden>
+      <span class="su-name" id="userChip"></span>
+      <button id="btnChangePw" title="เปลี่ยนรหัสผ่าน" aria-label="เปลี่ยนรหัสผ่าน">
+        <svg viewBox="0 0 24 24"><path d="M12.6 10a5.5 5.5 0 10-1.3 3.4L13 15h2v2h2v2h3v-3l-5.7-5.7c.2-.4.3-.8.3-1.3zM7 10a2 2 0 114 0 2 2 0 01-4 0z"/></svg>
+      </button>
+      <button id="btnLogout" title="ออกจากระบบ" aria-label="ออกจากระบบ">
+        <svg viewBox="0 0 24 24"><path d="M10 17v-2H5V9h5V7l5 5-5 5zm3-14h6a2 2 0 012 2v14a2 2 0 01-2 2h-6v-2h6V5h-6V3z"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<button class="menu-btn" id="menuBtn" aria-label="เปิดเมนู">
+  <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+</button>
+<div class="scrim" id="scrim"></div>
+
+<!-- ══════════════════════════════════════ MAIN ═════════════════════════════ -->
+<main class="main">
+
+  <!-- ─────────────────────────── TAB 1 : แยกบริษัท ────────────────────────── -->
+  <section class="panel active" id="tab-plant" role="tabpanel">
+
+    <!-- ส่วนที่ 1 : ค้นหา -->
+    <div class="filterbar">
+      <div class="filterbar-head">
+        <h1>แยกบริษัท</h1>
+        <p>เลือกกิจการ บริษัท และโรงงาน เพื่อดูผลคะแนนรายโรงงาน</p>
+      </div>
+      <div class="filters">
+        <label class="fld">
+          <span>กิจการ</span>
+          <select id="pRegion"></select>
+        </label>
+        <label class="fld">
+          <span>ผู้จัดการผลิต</span>
+          <select id="pMgr"></select>
+        </label>
+        <label class="fld">
+          <span>ทีม FM</span>
+          <select id="pFM"></select>
+        </label>
+        <label class="fld">
+          <span>บจก./หจก.</span>
+          <select id="pCompany"></select>
+        </label>
+        <label class="fld">
+          <span>โรงงาน</span>
+          <select id="pPlant"></select>
+        </label>
+        <label class="fld fld-search">
+          <span>ค้นหาโรงงาน</span>
+          <input type="search" id="pSearch" placeholder="พิมพ์ชื่อโรงงาน หรือรหัส เช่น FC139" autocomplete="off">
+          <div class="suggest" id="pSuggest" hidden></div>
+        </label>
+        <button class="btn btn-pdf" id="btnPdf">
+          <svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          ดาวน์โหลด PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- ส่วนที่ 2 + 3 : เนื้อหารายงาน -->
+    <div id="plantReport"></div>
+  </section>
+
+  <!-- ─────────────────────────── TAB 2 : ภาพรวม ──────────────────────────── -->
+  <section class="panel" id="tab-overview" role="tabpanel">
+    <div class="filterbar">
+      <div class="filterbar-head">
+        <h1>ภาพรวม</h1>
+        <p>เปรียบเทียบผลการดำเนินงานทุกโรงงาน แยกตามหัวข้อคะแนน</p>
+      </div>
+      <div class="filters">
+        <label class="fld">
+          <span>กิจการ</span>
+          <select id="oRegion"></select>
+        </label>
+        <label class="fld">
+          <span>ผู้จัดการผลิต</span>
+          <select id="oTeam"></select>
+        </label>
+        <label class="fld">
+          <span>ทีม FM</span>
+          <select id="oFM"></select>
+        </label>
+        <label class="fld">
+          <span>บริษัท</span>
+          <select id="oCompany"></select>
+        </label>
+        <label class="fld fld-search">
+          <span>ค้นหาโรงงาน</span>
+          <input type="search" id="oSearch" placeholder="ชื่อโรงงาน หรือรหัส" autocomplete="off">
+        </label>
+        <div class="filter-count" id="oCount"></div>
+      </div>
+    </div>
+    <div id="overviewBody"></div>
+  </section>
+
+  <!-- ─────────────────────────── TAB 3 : หักคะแนน ────────────────────────── -->
+  <section class="panel" id="tab-deduct" role="tabpanel">
+    <div class="filterbar">
+      <div class="filterbar-head">
+        <h1>หักคะแนน</h1>
+        <p>โรงงานที่มีคะแนนติดลบ พร้อมเรื่องที่ถูกหักคะแนน</p>
+      </div>
+    </div>
+    <div id="deductBody"></div>
+  </section>
+
+</main>
+
+<!-- PDF staging area (off-screen) -->
+<div id="pdfStage" aria-hidden="true"></div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="vendor/chart.umd.js"></script>
+<script src="vendor/chartjs-plugin-datalabels.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="data.js?v=7"></script>
+<script src="app.js?v=7"></script>
+<script src="auth.js?v=7"></script>
+</body>
+</html>
