@@ -320,13 +320,14 @@ button{font-family:inherit}
 .subtab.active{background:var(--ink);border-color:var(--ink);color:#fff}
 .subtab .cnt{font-family:var(--mono);opacity:.65;margin-left:5px;font-size:11px}
 
-.tbl-wrap{overflow-x:auto;padding:0 2px}
+.tbl-wrap{overflow:auto;max-height:66vh;padding:0 2px}
 table.dt{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
 table.dt th,table.dt td{padding:8px 10px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line)}
 table.dt th{
   background:#F7F9F8;font-size:11px;font-weight:600;color:var(--muted);
-  position:sticky;top:0;z-index:2;text-transform:uppercase;letter-spacing:.04em;
+  position:sticky;top:0;z-index:5;text-transform:uppercase;letter-spacing:.04em;
+  box-shadow:0 1px 0 var(--line);
 }
 table.dt td{font-family:var(--mono);font-weight:500}
 table.dt th.l,table.dt td.l{text-align:left;font-family:var(--sans);white-space:nowrap}
@@ -562,4 +563,40 @@ table.dt .sub{display:block;font-size:10.5px;color:var(--muted);font-family:var(
 @media (max-width:560px){
   .gate{padding:14px}
   .gate-card{padding:22px 20px 18px}
+}
+
+/* ═══════════════════════════ TAB รายงานรายโรงงาน ══════════════════════════
+   ตารางบีบให้กะทัดรัด คอลัมน์หดตามเนื้อหาเท่าที่จำเป็นเพื่อให้พอดีความกว้างหน้าจอ */
+.rt-tbl{table-layout:auto}
+.rt-tbl th,.rt-tbl td{padding:5px 7px;font-size:11.5px}
+.rt-tbl th{white-space:normal;line-height:1.3;vertical-align:bottom;padding-bottom:6px}
+.rt-tbl th.sortable{cursor:pointer;user-select:none;transition:color .12s}
+.rt-tbl th.sortable:hover{color:var(--text)}
+.rt-tbl th.sortable.active{color:var(--green-d)}
+.rt-tbl .rt-h1{display:block;font-size:10.5px;font-weight:600;white-space:nowrap}
+.rt-tbl .rt-h2{
+  display:block;font-size:9px;font-weight:500;color:var(--muted);
+  margin-top:1px;white-space:nowrap;text-transform:none;letter-spacing:0;
+}
+.rt-tbl th.sortable.active .rt-h2{color:var(--green-d);opacity:.75}
+.rt-tbl td.tot{font-weight:600;background:#F7F9F8}
+.rt-tbl td{vertical-align:middle}
+.rt-stars{gap:1px}
+.rt-stars svg{width:14px;height:14px}
+
+/* บริษัทและชื่อโรงงาน: บรรทัดเดียว ตัดด้วย … ถ้ายาวเกิน ชี้เมาส์ค้างดูชื่อเต็มได้ */
+.rt-tbl th.r-company,.rt-tbl td.r-company{max-width:140px}
+.rt-company{
+  display:inline-block;max-width:140px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;vertical-align:bottom;font-weight:500;
+}
+.rt-tbl td .plant{
+  display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;vertical-align:bottom;
+}
+
+/* ปุ่มดาวน์โหลด Excel วางถัดจากปุ่มค้นหา ไม่ดันสุดขวาเหมือน PDF */
+#btnReportXlsx{flex:0 0 auto}
+@media (max-width:1000px){
+  #btnReportXlsx{width:100%;justify-content:center;margin-top:4px}
 }

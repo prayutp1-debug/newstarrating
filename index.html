@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 
@@ -110,6 +110,10 @@
       <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v5h-8V3zM3 13h8v8H3v-8zm10-3h8v11h-8V10z"/></svg>
       <span>ภาพรวม</span>
     </button>
+    <button class="nav-item" role="tab" data-tab="report" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.6H8V12zm0 3.4h8V17H8v-1.6zm0-6.8h4v1.6H8V8.6z"/></svg>
+      <span>รายงานรายโรงงาน</span>
+    </button>
     <button class="nav-item" role="tab" data-tab="deduct" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2zm0 6 7 12H5l7-12zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>
       <span>หักคะแนน</span>
@@ -119,7 +123,7 @@
   <div class="side-foot">
     <div class="side-stat"><span>โรงงานทั้งหมด</span><b id="sideTotal">–</b></div>
     <div class="side-stat"><span>คะแนนเต็ม</span><b>100</b></div>
-    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 7</span></p>
+    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 11</span></p>
     <div class="side-user" id="sideUser" hidden>
       <span class="su-name" id="userChip"></span>
       <button id="btnChangePw" title="เปลี่ยนรหัสผ่าน" aria-label="เปลี่ยนรหัสผ่าน">
@@ -220,6 +224,44 @@
     <div id="overviewBody"></div>
   </section>
 
+  <!-- ─────────────────────────── TAB 2.5 : รายงานรายโรงงาน ────────────────── -->
+  <section class="panel" id="tab-report" role="tabpanel">
+    <div class="filterbar">
+      <div class="filterbar-head">
+        <h1>รายงานรายโรงงาน</h1>
+        <p>คะแนนแยกรายหัวข้อของทุกโรงงาน พร้อมคะแนนรวมและดาวที่ได้</p>
+      </div>
+      <div class="filters">
+        <label class="fld">
+          <span>กิจการ</span>
+          <select id="rRegion"></select>
+        </label>
+        <label class="fld">
+          <span>ผู้จัดการผลิต</span>
+          <select id="rTeam"></select>
+        </label>
+        <label class="fld">
+          <span>ทีม FM</span>
+          <select id="rFM"></select>
+        </label>
+        <label class="fld">
+          <span>บริษัท</span>
+          <select id="rCompany"></select>
+        </label>
+        <label class="fld fld-search">
+          <span>ค้นหาโรงงาน</span>
+          <input type="search" id="rSearch" placeholder="ชื่อโรงงาน หรือรหัส" autocomplete="off">
+        </label>
+        <div class="filter-count" id="rCount"></div>
+        <button class="btn btn-pdf" id="btnReportXlsx" style="margin-left:0">
+          <svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          ดาวน์โหลด Excel
+        </button>
+      </div>
+    </div>
+    <div id="reportBody"></div>
+  </section>
+
   <!-- ─────────────────────────── TAB 3 : หักคะแนน ────────────────────────── -->
   <section class="panel" id="tab-deduct" role="tabpanel">
     <div class="filterbar">
@@ -242,8 +284,9 @@
 <script src="vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
-<script src="data.js?v=7"></script>
-<script src="app.js?v=7"></script>
-<script src="auth.js?v=7"></script>
+<script src="vendor/exceljs.min.js"></script>
+<script src="data.js?v=11"></script>
+<script src="app.js?v=11"></script>
+<script src="auth.js?v=11"></script>
 </body>
 </html>

@@ -1094,6 +1094,268 @@ function renderOverview() {
   }
 }
 
+/* ═════════════════════════ TAB 2.5 : รายงานรายโรงงาน ══════════════════════
+   ตารางเดียวรวมทุกโรงงาน แสดงคะแนนแยกรายหัวข้อ คะแนนรวม และดาวที่ได้        */
+const rRegion = $('#rRegion'), rTeam = $('#rTeam'), rFM = $('#rFM'),
+      rCompany = $('#rCompany'), rSearch = $('#rSearch');
+const R_CHAIN = [[rRegion, 'region', 'ทุกกิจการ'], [rTeam, 'team', 'ทุกผู้จัดการผลิต'],
+                 [rFM, 'teamFM', 'ทุกทีม FM'], [rCompany, 'company', 'ทุกบริษัท']];
+let rSort = { key: 'company', dir: 1 };
+
+function reportPool() {
+  let list = PLANTS.slice();
+  R_CHAIN.forEach(row => {
+    if (row[0].value !== ALL) list = list.filter(p => p[row[1]] === row[0].value);
+  });
+  const q = rSearch.value.trim().toLowerCase();
+  if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) ||
+                                  p.company.toLowerCase().includes(q));
+  return list;
+}
+
+function syncReportFilters() {
+  let base = PLANTS;
+  R_CHAIN.forEach(row => {
+    const sel = row[0], key = row[1];
+    fillSelect(sel, uniqSorted(base.map(p => p[key])), row[2], true);
+    if (sel.value !== ALL && !base.some(p => p[key] === sel.value)) sel.value = ALL;
+    if (sel.value !== ALL) base = base.filter(p => p[key] === sel.value);
+  });
+  renderReport();
+}
+R_CHAIN.forEach((row, i) => {
+  row[0].addEventListener('change', () => {
+    for (let j = i + 1; j < R_CHAIN.length; j++) R_CHAIN[j][0].value = ALL;
+    syncReportFilters();
+  });
+});
+let rTimer;
+rSearch.addEventListener('input', () => { clearTimeout(rTimer); rTimer = setTimeout(renderReport, 200); });
+
+/* คอลัมน์คะแนนแยกรายหัวข้อ: [label, คะแนนเต็ม, key ใน p.sc, class สี] */
+const REPORT_SCORE_COLS = [
+  ['ยอดขาย', 15, 'sale', 'b-sale'],
+  ['วัตถุดิบ', 5, 'admix', 'b-admix'],
+  ['คุณภาพ', 20, 'qual', 'b-qual'],
+  ['Safety', 20, 'safety', 'b-safety'],
+  ['NPS', 18, 'nps', 'b-nps'],
+  ['พนักงาน', 12, 'emp', 'b-emp'],
+  ['สิ่งแวดล้อม', 10, 'env', 'b-env'],
+  ['หักคะแนน', null, 'ded', 'b-ded'],
+];
+
+function reportSortValue(p, key) {
+  if (key === 'name') return p.name;
+  if (key === 'company') return p.company;
+  if (key === 'total') return p.sc.total;
+  if (key === 'star') return p.sc.star;
+  return p.sc[key] || 0;
+}
+
+function renderReport() {
+  const pool = reportPool();
+  $('#rCount').innerHTML = 'พบ <b>' + pool.length + '</b> โรงงาน';
+  const host = $('#reportBody');
+  host.innerHTML = '';
+
+  const rows = pool.slice().sort((a, b) => {
+    const va = reportSortValue(a, rSort.key), vb = reportSortValue(b, rSort.key);
+    let cmp;
+    if (typeof va === 'string') cmp = va.localeCompare(vb, 'th') * rSort.dir * -1;
+    else cmp = (va - vb) * rSort.dir;
+    if (cmp !== 0) return cmp;
+    return a.name.localeCompare(b.name, 'th'); /* เรียงชื่อโรงงานเป็นตัวรอง ถ้าค่าหลักเท่ากัน */
+  });
+
+  const cols = [
+    { h: 'บริษัท', pts: null, l: true, key: 'company', cls: 'r-company',
+      f: p => '<span class="rt-company" title="' + esc(p.company) + '">' + esc(p.company) + '</span>' },
+    { h: 'โรงงาน', pts: null, l: true, key: 'name',
+      f: p => '<span class="plant" title="' + esc(p.name) + '">' + esc(p.name) + '</span>' },
+  ].concat(REPORT_SCORE_COLS.map(c => ({
+    h: c[0], pts: c[1], key: c[2],
+    f: p => {
+      const v = p.sc[c[2]] || 0;
+      const cls = c[2] === 'ded' ? (v < 0 ? 'bad' : 'dim') : (c[1] && v >= c[1] ? 'good' : (v ? '' : 'dim'));
+      return { t: sc(v), cls };
+    },
+  }))).concat([
+    { h: 'คะแนนรวม', pts: 100, key: 'total', f: p => ({ t: '<b>' + sc(p.sc.total) + '</b>', cls: 'tot' }) },
+    { h: 'ดาว', pts: null, key: 'star', f: p => ({ t: starsHTML(p.sc.star).replace('<div class="stars"', '<div class="stars rt-stars"'), cls: '' } ) },
+  ]);
+
+  const shell = el('div', 'osec');
+  const head = el('div', 'osec-head',
+    '<h2>ตารางคะแนนรายโรงงาน</h2><span class="hint">คลิกหัวตารางเพื่อเรียงลำดับ</span>');
+  shell.appendChild(head);
+  const body = el('div');
+  shell.appendChild(body);
+  host.appendChild(shell);
+
+  const size = 20;
+  let page = 0;
+
+  function draw() {
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    if (page >= pages) page = pages - 1;
+    const slice = rows.slice(page * size, page * size + size);
+
+    if (!rows.length) {
+      body.innerHTML = '<div class="empty"><b>ไม่พบโรงงาน</b>ลองปรับตัวกรองด้านบน</div>';
+      return;
+    }
+
+    let h = '<div class="tbl-wrap"><table class="dt rt-tbl"><thead><tr><th class="l" style="width:28px">#</th>';
+    cols.forEach(c => {
+      const active = rSort.key === c.key;
+      const arrow = active ? (rSort.dir === -1 ? ' ▼' : ' ▲') : '';
+      h += '<th class="' + (c.l ? 'l ' : '') + (c.cls || '') + ' sortable' + (active ? ' active' : '') + '" data-sort="' + c.key + '">' +
+        '<span class="rt-h1">' + c.h + arrow + '</span>' +
+        (c.pts ? '<span class="rt-h2">(' + c.pts + ' คะแนน)</span>' : '') +
+      '</th>';
+    });
+    h += '</tr></thead><tbody>';
+    slice.forEach((p, i) => {
+      h += '<tr><td class="l rank">' + (page * size + i + 1) + '</td>';
+      cols.forEach(c => {
+        const out = c.f(p);
+        const cell = (out && typeof out === 'object') ? out : { t: out };
+        h += '<td class="' + (c.l ? 'l ' : '') + (c.cls || '') + ' ' + (cell.cls || '') + '">' + (cell.t == null ? '–' : cell.t) + '</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+
+    h += '<div class="pager"><span class="info">แสดง <b>' + (page * size + 1) + '–' +
+      Math.min(rows.length, page * size + size) + '</b> จาก <b>' + rows.length + '</b> โรงงาน</span>' +
+      '<span class="spacer"></span>' +
+      '<button class="pg-btn" data-go="prev"' + (page === 0 ? ' disabled' : '') + ' aria-label="ก่อนหน้า">' +
+        '<svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>' +
+      '<span class="info">หน้า <b>' + (page + 1) + '</b> / <b>' + pages + '</b></span>' +
+      '<button class="pg-btn" data-go="next"' + (page >= pages - 1 ? ' disabled' : '') + ' aria-label="ถัดไป">' +
+        '<svg viewBox="0 0 24 24"><path d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg></button></div>';
+
+    body.innerHTML = h;
+    $$('[data-go]', body).forEach(b => b.addEventListener('click', () => {
+      page += (b.dataset.go === 'next' ? 1 : -1);
+      draw();
+      shell.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }));
+    $$('.sortable', body).forEach(th => th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (rSort.key === key) rSort.dir *= -1; else { rSort.key = key; rSort.dir = key === 'name' ? 1 : -1; }
+      page = 0;
+      renderReport();
+    }));
+  }
+  draw();
+}
+
+/* ── ดาวน์โหลด Excel เฉพาะข้อมูลที่กรองอยู่ในตารางนี้ ─────────────────────── */
+async function exportReportExcel() {
+  if (typeof ExcelJS === 'undefined') { toast('โหลดไลบรารีสร้างไฟล์ Excel ไม่สำเร็จ'); return; }
+  const btn = $('#btnReportXlsx');
+  const label = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'กำลังสร้างไฟล์…';
+
+  try {
+    const rows = reportPool().slice().sort((a, b) =>
+      a.company.localeCompare(b.company, 'th') || a.name.localeCompare(b.name, 'th'));
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Franchise Scorecard';
+    wb.created = new Date();
+
+    const thin = { style: 'thin', color: { argb: 'FFB9C4C2' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E1F2A' } };
+    const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    const leftCols = new Set([1, 2, 3]); /* กิจการ / บริษัท / โรงงาน ชิดซ้าย ที่เหลือกึ่งกลาง */
+
+    function makeSheet(name, headers, widths) {
+      const ws = wb.addWorksheet(name);
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      const hr = ws.addRow(headers);
+      hr.height = 26;
+      hr.eachCell(c => {
+        c.font = headerFont; c.fill = headerFill; c.border = border;
+        c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      });
+      widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+      return ws;
+    }
+    function addDataRow(ws, values, boldCol) {
+      const r = ws.addRow(values);
+      r.eachCell((c, i) => {
+        c.border = border;
+        c.alignment = { vertical: 'middle', horizontal: leftCols.has(i) ? 'left' : 'center' };
+      });
+      if (boldCol) r.getCell(boldCol).font = { bold: true };
+      return r;
+    }
+
+    /* ── Sheet 1 : รวมคะแนน ─────────────────────────────────────────────── */
+    const ws1 = makeSheet('รวมคะแนน', [
+      'กิจการ', 'บริษัท', 'โรงงาน',
+      'ยอดขาย (15)', 'วัตถุดิบ (5)', 'คุณภาพ (20)', 'Safety (20)', 'NPS (18)',
+      'พนักงาน (12)', 'สิ่งแวดล้อม (10)', 'หักคะแนน', 'คะแนนรวม (100)', 'ดาว',
+    ], [13, 26, 24, 11, 11, 11, 11, 10, 11, 12, 11, 13, 7]);
+    rows.forEach(p => {
+      addDataRow(ws1, [
+        p.region, p.company, p.name,
+        p.sc.sale, p.sc.admix, p.sc.qual, p.sc.safety, p.sc.nps, p.sc.emp, p.sc.env, p.sc.ded,
+        p.sc.total, p.sc.star,
+      ], 12);
+    });
+
+    /* ── Sheet 2 : รายละเอียด ───────────────────────────────────────────── */
+    const ws2 = makeSheet('รายละเอียด', [
+      'กิจการ', 'บริษัท', 'โรงงาน',
+      'ยอดขายสะสม (ลบ.ม.)', 'คะแนนยอดขาย',
+      '% สั่งวัตถุดิบเฉลี่ย', 'คะแนนวัตถุดิบ',
+      'คะแนน Quality', 'คะแนน Dangerous Zone', 'คะแนน Manual', 'คะแนนคุณภาพรวม',
+      'คะแนน Safety โรงงาน', 'คะแนน Safety รถโม่', 'คะแนน Safety อบรม จบส.', 'คะแนน Safety รวม',
+      'เดือนผ่านเกณฑ์ NPS', 'คะแนน NPS',
+      'จำนวนพนักงาน', 'พนักงานสอบผ่าน', 'คะแนนพนักงาน',
+      'ผลตรวจสิ่งแวดล้อม (/10)', 'คะแนนสิ่งแวดล้อม',
+      'หักคะแนน (ไม่ร่วมมือ)', 'หักคะแนน (ร้องเรียน)', 'รวมหักคะแนน',
+      'คะแนนรวม', 'ดาว',
+    ], [13, 26, 24, 15, 11, 13, 11, 11, 13, 9, 12, 13, 12, 15, 12, 13, 10, 11, 11, 11, 15, 12, 13, 13, 11, 11, 7]);
+    rows.forEach(p => {
+      const sale = p.sale || {}, admix = p.admix || {}, cpk = p.cpk || {}, nps = p.nps || {}, emp = p.emp || {},
+            sfp = p.sfPlant || {}, sft = p.sfTruck || {}, drv = p.drv || {}, env = p.env || {}, ded = p.ded || {};
+      addDataRow(ws2, [
+        p.region, p.company, p.name,
+        sale.total || 0, p.sc.sale,
+        Math.round((admix.total || 0) * 1000) / 10, p.sc.admix,
+        cpk.total || 0, cpk.dz || 0, cpk.manual || 0, p.sc.qual,
+        sfp.score || 0, sft.score || 0, drv.score || 0, p.sc.safety,
+        nps.pass || 0, p.sc.nps,
+        emp.count || 0, emp.pass || 0, p.sc.emp,
+        env.sum || 0, p.sc.env,
+        Math.abs(ded.coop || 0), Math.abs(ded.comp || 0), p.sc.ded,
+        p.sc.total, p.sc.star,
+      ], 26);
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'รายงานรายโรงงาน_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('ดาวน์โหลดไฟล์ Excel เรียบร้อย (' + rows.length + ' โรงงาน)');
+  } catch (err) {
+    console.error(err);
+    toast('สร้างไฟล์ Excel ไม่สำเร็จ — ลองใหม่อีกครั้ง');
+  } finally {
+    btn.disabled = false; btn.innerHTML = label;
+  }
+}
+$('#btnReportXlsx').addEventListener('click', exportReportExcel);
+
 /* ═════════════════════════════ TAB 3 : หักคะแนน ═══════════════════════════ */
 function renderDeduct() {
   const host = $('#deductBody');
@@ -1156,10 +1418,12 @@ window.__bootDashboard = function () {
   booted = true;
   syncPlantFilters();
   syncOverviewFilters();
+  syncReportFilters();
   renderDeduct();
 
   /* ตรวจว่าทุกช่องค้นหามีตัวเลือกจริง ถ้าว่างแปลว่าไฟล์สคริปต์หรือข้อมูลไม่ตรงกัน */
-  const need = [[pMgr, 'ผู้จัดการผลิต'], [pFM, 'ทีม FM'], [oTeam, 'ผู้จัดการผลิต'], [oFM, 'ทีม FM']];
+  const need = [[pMgr, 'ผู้จัดการผลิต'], [pFM, 'ทีม FM'], [oTeam, 'ผู้จัดการผลิต'], [oFM, 'ทีม FM'],
+                [rTeam, 'ผู้จัดการผลิต'], [rFM, 'ทีม FM']];
   const bad = need.filter(x => x[0].options.length < 2).map(x => x[1]);
   if (bad.length) {
     toast('ช่อง ' + Array.from(new Set(bad)).join(' และ ') +
