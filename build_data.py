@@ -224,6 +224,21 @@ for c in dropped:
     del plants[c]
 order = [c for c in order if c in plants]
 
+# ------------------------- แก้คะแนนพนักงานสำหรับโรงงาน Type M (สิทธิพิเศษ 2 คน)
+# ไฟล์ L1L2 Score ต้นฉบับยังคำนวณด้วยเกณฑ์ 3 คนเหมือนโรงงานทั่วไปทุกแห่ง
+# (ตรวจพบว่าโรงงาน Type M ที่มีพนักงานครบ 2 คนพอดี ยังได้ scoreCount = 0 ไม่ใช่ 9)
+# จึงต้องคำนวณคะแนนพนักงานของโรงงาน Type M ใหม่ตามสิทธิพิเศษ: ใช้พนักงานแค่ 2 คนก็ได้คะแนนเต็ม
+for c in order:
+    p = plants[c]
+    if p.get('type') == 'M':
+        e = p.get('emp')
+        if not e:
+            continue
+        cnt = e.get('count', 0) or 0
+        psd = e.get('pass', 0) or 0
+        e['scoreCount'] = 9.0 if cnt >= 2 else 0.0
+        e['scoreL1L2'] = 3.0 if psd >= 2 else min(psd, 3)
+
 # -------------------------------------------------------------- total scoring
 for c in order:
     p = plants[c]
