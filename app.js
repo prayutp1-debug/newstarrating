@@ -83,7 +83,9 @@ const inspected  = p => (p.sfPlant && p.sfPlant.month > 0);
 const truckDone  = p => !!(p.sfTruck && (p.sfTruck.h1 || p.sfTruck.h2));
 const envDone    = p => !!(p.env && (p.env.score > 0 || p.env.sum > 0));
 const drvComplete= p => !!(p.drv && p.drv.total > 0 && p.drv.untrained === 0);
-const empPass    = p => !!(p.emp && p.emp.pass >= RULES.empMin);
+/* โรงงาน Type M ใช้เกณฑ์พนักงานขั้นต่ำ 2 คน แทน 3 คนแบบโรงงานทั่วไป */
+const empRequired = p => (p.type === 'M' ? 2 : RULES.empMin);
+const empPass = p => !!(p.emp && p.emp.pass >= empRequired(p));
 
 /* ═══════════════════════════════ NAVIGATION ═══════════════════════════════ */
 $$('.nav-item').forEach(btn => {
@@ -996,16 +998,16 @@ function renderOverview() {
       { h: 'สอบผ่าน', f: p => ({ t: num(p.emp ? p.emp.pass : 0) + ' คน', cls: 'bad' }) },
       { h: 'รายชื่อที่ยังไม่ผ่าน', l: true, f: p => {
           const f = ((p.emp && p.emp.list) || []).filter(e => e.r === 'ไม่ผ่าน');
-          if (!f.length) return '<span style="color:var(--muted)">พนักงานไม่ครบ 3 คน</span>';
+          if (!f.length) return '<span style="color:var(--muted)">พนักงานไม่ครบ ' + empRequired(p) + ' คน</span>';
           return '<div class="name-list" style="max-height:none">' +
             f.map(e => '<span>' + esc(e.n) + ' · ' + esc(e.p) + '</span>').join('') + '</div>';
         } }];
     host.appendChild(section('พนักงาน', '12 คะแนน',
-      'ผ่านเมื่อมีพนักงานสอบผ่านตั้งแต่ 3 คนขึ้นไป',
+      'ผ่านเมื่อมีพนักงานสอบผ่านตั้งแต่ 3 คนขึ้นไป (โรงงาน Type M ใช้เกณฑ์ 2 คน)',
       [{ label: 'สอบผ่าน', count: passed.length, render: b => pagedTable(b, passCols, passed,
           { emptyTitle: 'ยังไม่มีโรงงานที่ผ่านเกณฑ์' }) },
        { label: 'ยังไม่ผ่าน', count: notPassed.length, render: b => pagedTable(b, failCols, notPassed,
-          { emptyTitle: 'ทุกโรงงานผ่านเกณฑ์แล้ว', emptyText: 'ไม่มีโรงงานที่พนักงานสอบผ่านน้อยกว่า 3 คน' }) }]));
+          { emptyTitle: 'ทุกโรงงานผ่านเกณฑ์แล้ว', emptyText: 'ไม่มีโรงงานที่พนักงานสอบผ่านไม่ครบเกณฑ์' }) }]));
   }
 
   /* ── 6. Safety : โรงงาน ────────────────────────────────────────────────── */
