@@ -600,3 +600,42 @@ table.dt .sub{display:block;font-size:10.5px;color:var(--muted);font-family:var(
 @media (max-width:1000px){
   #btnReportXlsx{width:100%;justify-content:center;margin-top:4px}
 }
+
+/* ═══════════════════════════════ TAB Dashboard ════════════════════════════ */
+.home-sec{margin-bottom:22px}
+.home-sec-title{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.home-sec-title h2{font-size:16px;letter-spacing:-.01em}
+.home-sec-title span{font-size:12px;color:var(--muted)}
+
+/* การ์ดสรุประดับดาว */
+.star-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.star-card{
+  background:var(--card);border-radius:var(--r);box-shadow:var(--sh);
+  padding:16px 16px 14px;text-align:center;border-top:3px solid var(--gold);
+  position:relative;overflow:hidden;
+}
+.star-card .sc-stars{display:flex;justify-content:center;gap:2px;margin-bottom:8px}
+.star-card .sc-stars svg{width:20px;height:20px}
+.star-card .sc-num{font-family:var(--mono);font-size:34px;font-weight:700;line-height:1;color:var(--ink);letter-spacing:-.02em}
+.star-card .sc-unit{font-size:11.5px;color:var(--muted);margin-top:3px}
+.star-card .sc-pct{
+  display:inline-block;margin-top:8px;font-family:var(--mono);font-size:11px;font-weight:600;
+  color:var(--green-d);background:var(--green-l);padding:2px 9px;border-radius:20px;
+}
+
+/* แถบเลือกหัวข้อ/กิจการ (ใช้สไตล์เดียวกับ .subtabs) */
+.chart-picker{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.pick-btn{
+  border:1px solid var(--line-2);background:var(--card);color:var(--muted);
+  font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;
+  transition:.14s;
+}
+.pick-btn:hover{border-color:var(--muted);color:var(--text)}
+.pick-btn.active{background:var(--ink);border-color:var(--ink);color:#fff}
+
+.home-chart-card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px}
+.home-chart-wrap{position:relative;height:380px}
+.home-chart-empty{padding:60px 20px;text-align:center;color:var(--muted);font-size:13px}
+
+@media (max-width:1100px){.star-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.star-grid{grid-template-columns:1fr}}
