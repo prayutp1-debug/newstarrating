@@ -639,7 +639,6 @@ table.dt .sub{display:block;font-size:10.5px;color:var(--muted);font-family:var(
 
 @media (max-width:1100px){.star-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:560px){.star-grid{grid-template-columns:1fr}}
-<<<<<<< HEAD
 
 /* ═══════════════════════════ หน้าจอ "กำลังโหลดข้อมูล Excel" ═══════════════════ */
 #dataLoading{z-index:10000}
@@ -649,5 +648,3 @@ table.dt .sub{display:block;font-size:10.5px;color:var(--muted);font-family:var(
   animation:dl-spin .8s linear infinite;
 }
 @keyframes dl-spin{to{transform:rotate(360deg)}}
-=======
->>>>>>> 26e5749fe06b262e64f608d67acc2c333c942e43
