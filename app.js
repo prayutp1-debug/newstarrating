@@ -327,6 +327,224 @@ function renderHome() {
   drawHomeRegionChart();
 }
 
+/* ═════════════════════════════ TAB 0 : Dashboard ═══════════════════════════
+   สรุประดับดาวทั้งเครือข่าย (รายโรงงาน + รายบริษัท) และกราฟคะแนนแยกหัวข้อ/กิจการ */
+const HOME_TOPICS = [
+  ['ยอดขาย', 'sale', 15], ['วัตถุดิบ', 'admix', 5], ['คุณภาพ', 'qual', 20],
+  ['Safety', 'safety', 20], ['NPS', 'nps', 18], ['พนักงาน', 'emp', 12], ['สิ่งแวดล้อม', 'env', 10],
+];
+const STAR_TIERS = [5, 4, 3, 2]; /* เรียงจากดาวสูงสุดไปต่ำสุด ให้ตรงกับการ์ดที่แสดง */
+const homeCharts = {};
+let homeTopicSel = HOME_TOPICS[0][1];   /* หัวข้อที่เลือกไว้ในกราฟ "แยกเรื่อง" */
+let homeRegionSel = null;               /* กิจการที่เลือกไว้ในกราฟ "กิจการ" (null = ยังไม่เลือก ใช้อันแรก) */
+
+/* คำนวณระดับดาวเฉลี่ยระดับบริษัท: เฉลี่ยคะแนนรวมของทุกโรงงานในบริษัทนั้น แล้วเทียบเกณฑ์ดาวแบบเดียวกับรายโรงงาน */
+function companyStarStats() {
+  const byCompany = {};
+  PLANTS.forEach(p => {
+    (byCompany[p.company] = byCompany[p.company] || []).push(p.sc.total);
+  });
+  const stars = { 5: 0, 4: 0, 3: 0, 2: 0 };
+  Object.keys(byCompany).forEach(name => {
+    const arr = byCompany[name];
+    const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+    const tier = RULES.star.find(t => avg >= t[0]) || [0, 2, 0];
+    stars[tier[1]] = (stars[tier[1]] || 0) + 1;
+  });
+  return { stars, total: Object.keys(byCompany).length };
+}
+
+function starCardsHTML(starCounts, totalUnit, unitLabel) {
+  return '<div class="star-grid">' + STAR_TIERS.map(n => {
+    const count = starCounts[n] || 0;
+    const pct = totalUnit ? Math.round((count / totalUnit) * 100) : 0;
+    return '<div class="star-card">' + starsHTML(n).replace('<div class="stars"', '<div class="stars sc-stars"') +
+      '<div class="sc-num">' + num(count) + '</div>' +
+      '<div class="sc-unit">' + unitLabel + '</div>' +
+      '<span class="sc-pct">' + pct + '% ของทั้งหมด</span>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+/* แบ่งช่วงคะแนนเป็น 5 ระดับตาม % ของคะแนนเต็มในหัวข้อนั้น ใช้ร่วมกันทั้งสองกราฟ */
+const SCORE_BANDS = [
+  { label: '0%', color: '#C8102E', test: pct => pct <= 0 },
+  { label: '1–49%', color: '#E2820B', test: pct => pct > 0 && pct < 0.5 },
+  { label: '50–79%', color: '#E4A017', test: pct => pct >= 0.5 && pct < 0.8 },
+  { label: '80–99%', color: '#7FB88A', test: pct => pct >= 0.8 && pct < 1 },
+  { label: '100%', color: '#00834B', test: pct => pct >= 1 },
+];
+function scoreBandIndex(value, max) {
+  if (!max) return 0;
+  const pct = (value || 0) / max;
+  return SCORE_BANDS.findIndex(b => b.test(pct));
+}
+/* คำนวณทั้งจำนวนและรายชื่อโรงงาน (พร้อมบริษัท) ของแต่ละช่วงคะแนน ไล่ตามกลุ่มที่กำหนด
+   (เช่น รายกิจการ หรือ รายหัวข้อ) เพื่อให้แตะที่แท่งแล้วเห็นชื่อโรงงานในช่วงนั้นได้ */
+function bandDetail(groups, getList, key, max) {
+  return SCORE_BANDS.map((band, bi) => {
+    const counts = [], lists = [];
+    groups.forEach(g => {
+      const matched = getList(g).filter(p => scoreBandIndex(p.sc[key] || 0, max) === bi);
+      counts.push(matched.length);
+      lists.push(matched.map(p => p.name + ' (' + p.company + ')'));
+    });
+    return { counts, lists };
+  });
+}
+
+const TOOLTIP_MAX_NAMES = 14;
+/* แตะ/ชี้ที่แท่งแต่ละช่วง แสดงรายชื่อโรงงาน (บริษัท) ในช่วงคะแนนนั้น แทนตัวเลขเฉย ๆ */
+const homeTooltipCallbacks = {
+  title: items => (items[0] ? items[0].label : ''),
+  label: ctx => {
+    const names = (ctx.dataset.plantLists && ctx.dataset.plantLists[ctx.dataIndex]) || [];
+    if (!names.length) return ctx.dataset.label + ': ไม่มีโรงงาน';
+    const shown = names.slice(0, TOOLTIP_MAX_NAMES);
+    const lines = [ctx.dataset.label + ' — ' + names.length + ' แห่ง:'].concat(shown);
+    if (names.length > shown.length) lines.push('…และอีก ' + (names.length - shown.length) + ' แห่ง');
+    return lines;
+  },
+};
+
+function scoreBandIndex(value, max) {
+  if (!max) return 0;
+  const pct = (value || 0) / max;
+  return SCORE_BANDS.findIndex(b => b.test(pct));
+}
+const stackedBaseOptions = (xLabel) => ({
+  responsive: true, maintainAspectRatio: false,
+  interaction: { mode: 'nearest', intersect: true }, /* แตะ/ชี้เฉพาะช่วงคะแนนที่โดน ไม่รวมทั้งแท่ง */
+  plugins: {
+    legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, padding: 14, usePointStyle: true, font: { size: 11.5 } } },
+    tooltip: {
+      callbacks: homeTooltipCallbacks,
+      bodyFont: { size: 11.5 }, titleFont: { size: 12.5, weight: '700' },
+      padding: 10, maxWidth: 260, boxPadding: 3,
+    },
+    datalabels: {
+      color: ctx => (ctx.dataset.backgroundColor === '#E4A017' || ctx.dataset.backgroundColor === '#7FB88A' ? '#17272F' : '#fff'),
+      font: { size: 10, weight: '600' },
+      display: ctx => (ctx.dataset.data[ctx.dataIndex] || 0) > 0,
+    },
+  },
+  scales: {
+    x: { stacked: true, grid: { display: false }, title: { display: true, text: xLabel, font: { size: 11.5, weight: '600' } } },
+    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 },
+         title: { display: true, text: 'จำนวนโรงงาน (แห่ง)', font: { size: 11.5, weight: '600' } },
+         grid: { color: '#EDF1F0' } },
+  },
+});
+
+function drawHomeTopicChart() {
+  if (homeCharts.topic) { homeCharts.topic.destroy(); delete homeCharts.topic; }
+  const canvas = $('#homeChartTopic');
+  if (!canvas || typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "'IBM Plex Sans Thai', sans-serif";
+  Chart.defaults.color = '#6C7F87';
+  const regions = uniqSorted(PLANTS.map(p => p.region));
+  const topic = HOME_TOPICS.find(t => t[1] === homeTopicSel);
+  const detail = bandDetail(regions, r => PLANTS.filter(p => p.region === r), topic[1], topic[2]);
+  homeCharts.topic = new Chart(canvas, {
+    type: 'bar',
+    plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : [],
+    data: {
+      labels: regions,
+      datasets: SCORE_BANDS.map((band, i) => ({
+        label: band.label, data: detail[i].counts, backgroundColor: band.color, borderRadius: 3,
+        plantLists: detail[i].lists,
+      })),
+    },
+    options: stackedBaseOptions('กิจการ'),
+  });
+}
+
+function drawHomeRegionChart() {
+  if (homeCharts.region) { homeCharts.region.destroy(); delete homeCharts.region; }
+  const canvas = $('#homeChartRegion');
+  if (!canvas || typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "'IBM Plex Sans Thai', sans-serif";
+  Chart.defaults.color = '#6C7F87';
+  const list = homeRegionSel ? PLANTS.filter(p => p.region === homeRegionSel) : PLANTS;
+  const labels = HOME_TOPICS.map(t => t[0]);
+  /* groups = หัวข้อทั้ง 7 เรื่อง แต่ละเรื่อง max ต่างกัน จึงต้องคำนวณ band แยกทีละหัวข้อ แล้วรวมเป็นแกน x */
+  const counts = SCORE_BANDS.map(() => []);
+  const lists = SCORE_BANDS.map(() => []);
+  HOME_TOPICS.forEach(t => {
+    SCORE_BANDS.forEach((band, bi) => {
+      const matched = list.filter(p => scoreBandIndex(p.sc[t[1]] || 0, t[2]) === bi);
+      counts[bi].push(matched.length);
+      lists[bi].push(matched.map(p => p.name + ' (' + p.company + ')'));
+    });
+  });
+  homeCharts.region = new Chart(canvas, {
+    type: 'bar',
+    plugins: (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : [],
+    data: {
+      labels,
+      datasets: SCORE_BANDS.map((band, i) => ({
+        label: band.label, data: counts[i], backgroundColor: band.color, borderRadius: 3,
+        plantLists: lists[i],
+      })),
+    },
+    options: stackedBaseOptions('คะแนนแต่ละเรื่อง'),
+  });
+}
+
+function renderHome() {
+  const host = $('#homeBody');
+  const plantStars = {}; PLANTS.forEach(p => { plantStars[p.sc.star] = (plantStars[p.sc.star] || 0) + 1; });
+  const compStats = companyStarStats();
+  const regions = uniqSorted(PLANTS.map(p => p.region));
+  if (!homeRegionSel) homeRegionSel = regions[0];
+
+  host.innerHTML =
+    '<div class="home-sec">' +
+      '<div class="home-sec-title"><h2>ระดับดาว — รายโรงงาน</h2><span>' + PLANTS.length + ' โรงงานทั้งหมด</span></div>' +
+      starCardsHTML(plantStars, PLANTS.length, 'โรงงาน') +
+    '</div>' +
+    '<div class="home-sec">' +
+      '<div class="home-sec-title"><h2>ระดับดาว — รายบริษัท</h2><span>เฉลี่ยคะแนนโรงงานในเครือทุกแห่งของบริษัท · ' + compStats.total + ' บริษัททั้งหมด</span></div>' +
+      starCardsHTML(compStats.stars, compStats.total, 'บริษัท') +
+    '</div>' +
+    '<div class="home-sec">' +
+      '<div class="home-sec-title"><h2>คะแนนแยกรายหัวข้อ</h2><span>จำนวนโรงงานแยกตามช่วงคะแนนที่ได้ในแต่ละกิจการ</span></div>' +
+      '<div class="home-chart-card">' +
+        '<div class="chart-picker" id="homeTopicPicker">' +
+          HOME_TOPICS.map(t => '<button class="pick-btn' + (t[1] === homeTopicSel ? ' active' : '') + '" data-topic="' + t[1] + '">' + t[0] + '</button>').join('') +
+        '</div>' +
+        '<div class="home-chart-wrap"><canvas id="homeChartTopic"></canvas></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="home-sec">' +
+      '<div class="home-sec-title"><h2>คะแนนแยกรายกิจการ</h2><span>จำนวนโรงงานแยกตามช่วงคะแนนที่ได้ในแต่ละหัวข้อ</span></div>' +
+      '<div class="home-chart-card">' +
+        '<div class="chart-picker" id="homeRegionPicker">' +
+          regions.map(r => '<button class="pick-btn' + (r === homeRegionSel ? ' active' : '') + '" data-region="' + esc(r) + '">' + esc(r) + '</button>').join('') +
+        '</div>' +
+        '<div class="home-chart-wrap"><canvas id="homeChartRegion"></canvas></div>' +
+      '</div>' +
+    '</div>';
+
+  $('#homeTopicPicker').addEventListener('click', e => {
+    const b = e.target.closest('[data-topic]');
+    if (!b) return;
+    homeTopicSel = b.dataset.topic;
+    $$('#homeTopicPicker .pick-btn').forEach(x => x.classList.toggle('active', x === b));
+    drawHomeTopicChart();
+  });
+  $('#homeRegionPicker').addEventListener('click', e => {
+    const b = e.target.closest('[data-region]');
+    if (!b) return;
+    homeRegionSel = b.dataset.region;
+    $$('#homeRegionPicker .pick-btn').forEach(x => x.classList.toggle('active', x === b));
+    drawHomeRegionChart();
+  });
+
+  drawHomeTopicChart();
+  drawHomeRegionChart();
+}
+
 /* ═════════════════════════════ TAB 1 : แยกบริษัท ══════════════════════════ */
 const pRegion = $('#pRegion'), pMgr = $('#pMgr'), pFM = $('#pFM'),
       pCompany = $('#pCompany'), pPlant = $('#pPlant'),
@@ -1755,8 +1973,11 @@ let booted = false;
 window.__bootDashboard = function () {
   if (booted) return;
   booted = true;
+<<<<<<< HEAD
   bindDashboardData();
   $('#sideTotal').textContent = PLANTS.length;
+=======
+>>>>>>> 26e5749fe06b262e64f608d67acc2c333c942e43
   /* Tab Dashboard ถูกเอาออกชั่วคราว — ฟังก์ชัน renderHome() ยังอยู่ด้านล่าง พร้อมเปิดใช้ใหม่
      ได้ทันทีด้วยการเรียก renderHome() ตรงนี้ และคืนปุ่ม/panel ใน index.html กลับมา */
   syncPlantFilters();
