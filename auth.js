@@ -153,7 +153,7 @@ const resetSuccess = m => setMsg('resetOk', 'resetErr', m, true);
 let currentUser = null;
 let inAppChangeMode = false;
 
-function showApp(username, name) {
+async function showApp(username, name) {
   currentUser = username;
   $('loginGate').style.display = 'none';
   document.body.classList.add('authed');
@@ -161,7 +161,59 @@ function showApp(username, name) {
   if (chip) chip.textContent = name || username;
   const su = $('sideUser');
   if (su) su.hidden = false;
-  if (typeof window.__bootDashboard === 'function') window.__bootDashboard();
+
+  /* ข้อมูลอ่านจาก Excel สด ๆ แบบ async (load-data.js เริ่มโหลดไว้ตั้งแต่เปิดหน้าเว็บแล้ว
+     ขนานกับตอนกรอกฟอร์ม Login) จุดนี้แค่รอให้โหลด/แปลงข้อมูลเสร็จก่อนแสดง Dashboard */
+  showDataLoadingOverlay();
+  try {
+    if (!window.__dataReadyPromise) throw new Error('ไม่พบตัวโหลดข้อมูล (load-data.js) — เช็คว่าไฟล์นี้ถูกอัปโหลดครบ');
+    await window.__dataReadyPromise;
+    hideDataLoadingOverlay();
+    if (typeof window.__bootDashboard === 'function') window.__bootDashboard();
+  } catch (err) {
+    console.error('โหลดข้อมูล Excel ไม่สำเร็จ', err);
+    showDataLoadError(err);
+  }
+}
+
+/* ─────────────────────────── หน้าจอ "กำลังโหลดข้อมูล" ───────────────────────── */
+function showDataLoadingOverlay() {
+  let box = $('dataLoading');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'dataLoading';
+    box.className = 'gate';
+    box.innerHTML =
+      '<div class="gate-card" style="text-align:center">' +
+        '<div class="dl-spinner" aria-hidden="true"></div>' +
+        '<div style="font-size:15px;font-weight:600;color:var(--ink);margin-top:16px">กำลังโหลดข้อมูลจากไฟล์ Excel…</div>' +
+        '<div id="dataLoadDetail" style="font-size:12.5px;color:var(--muted);margin-top:6px">กำลังเริ่มต้น…</div>' +
+        '<div id="dataLoadErr" style="display:none;margin-top:16px"></div>' +
+      '</div>';
+    document.body.appendChild(box);
+  }
+  box.style.display = 'flex';
+}
+function hideDataLoadingOverlay() {
+  const box = $('dataLoading');
+  if (box) box.style.display = 'none';
+}
+function showDataLoadError(err) {
+  const box = $('dataLoading');
+  if (!box) return;
+  const errBox = $('dataLoadErr');
+  const detail = $('dataLoadDetail');
+  const spinner = box.querySelector('.dl-spinner');
+  if (spinner) { spinner.style.animation = 'none'; spinner.style.borderTopColor = 'var(--red)'; spinner.style.borderColor = 'var(--red-l)'; spinner.style.borderTopColor = 'var(--red)'; }
+  if (detail) detail.textContent = 'เกิดข้อผิดพลาด';
+  if (errBox) {
+    errBox.style.display = 'block';
+    errBox.innerHTML =
+      '<div class="gmsg err" style="margin-bottom:12px">' + (err && err.message ? err.message : 'ไม่ทราบสาเหตุ') + '</div>' +
+      '<button class="gbtn" id="dataLoadRetry" type="button">ลองใหม่อีกครั้ง</button>';
+    const btn = $('dataLoadRetry');
+    if (btn) btn.addEventListener('click', () => location.reload());
+  }
 }
 
 function closeGateOverlay() {
@@ -210,14 +262,14 @@ $('loginSubmit').addEventListener('click', async () => {
       const u = result.username || username;
       saveSession(u, result.name);
       if (remember) saveRemembered(u, pw); else clearRemembered();
-      showApp(u, result.name);
+      await showApp(u, result.name);
     } else {
       const user = findAuthUser(username);
       if (!user) { loginError('ไม่พบชื่อผู้ใช้นี้ในระบบ'); return; }
       if (!await checkPassword(user, pw)) { loginError('รหัสผ่านไม่ถูกต้อง'); return; }
       saveSession(user.username, user.name);
       if (remember) saveRemembered(user.username, pw); else clearRemembered();
-      showApp(user.username, user.name);
+      await showApp(user.username, user.name);
     }
   } finally {
     btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';

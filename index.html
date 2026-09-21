@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
 
@@ -118,12 +118,16 @@
       <svg viewBox="0 0 24 24"><path d="M12 2 1 21h22L12 2zm0 6 7 12H5l7-12zm-1 4v4h2v-4h-2zm0 5v2h2v-2h-2z"/></svg>
       <span>หักคะแนน</span>
     </button>
+    <button class="nav-item" role="tab" data-tab="train" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 8-4.2V16h2V8L12 3zm0 8.5L4.5 8 12 4.5 19.5 8 12 11.5zM6 14v3.5c0 1.5 2.7 3.5 6 3.5s6-2 6-3.5V14l-6 3-6-3z"/></svg>
+      <span>การอบรม</span>
+    </button>
   </nav>
 
   <div class="side-foot">
     <div class="side-stat"><span>โรงงานทั้งหมด</span><b id="sideTotal">–</b></div>
     <div class="side-stat"><span>คะแนนเต็ม</span><b>100</b></div>
-    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 12</span></p>
+    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 19</span></p>
     <div class="side-user" id="sideUser" hidden>
       <span class="su-name" id="userChip"></span>
       <button id="btnChangePw" title="เปลี่ยนรหัสผ่าน" aria-label="เปลี่ยนรหัสผ่าน">
@@ -273,6 +277,40 @@
     <div id="deductBody"></div>
   </section>
 
+  <!-- ─────────────────────────── TAB 4 : การอบรม ─────────────────────────── -->
+  <section class="panel" id="tab-train" role="tabpanel">
+    <div class="filterbar">
+      <div class="filterbar-head">
+        <h1>การอบรม</h1>
+        <p>รายชื่อพนักงานที่ยังสอบไม่ผ่าน และ จบส. ที่ยังไม่อบรม</p>
+      </div>
+      <div class="filters">
+        <label class="fld">
+          <span>กิจการ</span>
+          <select id="trRegion"></select>
+        </label>
+        <label class="fld">
+          <span>ผู้จัดการผลิต</span>
+          <select id="trTeam"></select>
+        </label>
+        <label class="fld">
+          <span>ทีม FM</span>
+          <select id="trFM"></select>
+        </label>
+        <label class="fld">
+          <span>บริษัท</span>
+          <select id="trCompany"></select>
+        </label>
+        <label class="fld fld-search">
+          <span>ค้นหา</span>
+          <input type="search" id="trSearch" placeholder="ชื่อโรงงาน ชื่อคน หรือรหัส" autocomplete="off">
+        </label>
+        <div class="filter-count" id="trCount"></div>
+      </div>
+    </div>
+    <div id="trainBody"></div>
+  </section>
+
 </main>
 
 <!-- PDF staging area (off-screen) -->
@@ -285,8 +323,9 @@
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/exceljs.min.js"></script>
-<script src="data.js?v=12"></script>
-<script src="app.js?v=12"></script>
-<script src="auth.js?v=12"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="load-data.js?v=19"></script>
+<script src="app.js?v=19"></script>
+<script src="auth.js?v=19"></script>
 </body>
 </html>
