@@ -169,13 +169,15 @@ for r in load('Driver.xlsx', 'จบส.-Score')[1:]:
                     'untrained': abs(int(n(r[5]))), 'score': n(r[6]),
                     'month': int(n(r[7]))}
 
+# 2569-09: ไฟล์ Driver.xlsx ตัดคอลัมน์ข้อมูลส่วนตัว 8 คอลัมน์ออก ทำให้คอลัมน์ที่เหลือ
+# เลื่อนมาทางซ้าย 8 ตำแหน่ง (เดิม index 15-19 -> ปัจจุบัน index 7-11)
 for r in load('Driver.xlsx', 'รายชื่อจบส.')[1:]:
     c = code(r[0])
     if not c or c not in plants:
         continue
-    st = s(r[16])
+    st = s(r[8])
     if st in ('ยังไม่อบรม', 'ไม่ผ่าน'):
-        nm = (s(r[5]) + ' ' + s(r[6])).strip() or s(r[18])
+        nm = (s(r[5]) + ' ' + s(r[6])).strip() or s(r[10])
         plants[c].setdefault('drv', {}).setdefault('names', []).append({'n': nm, 's': st})
 
 # --------------------------------------------------------------------- 8. ENV

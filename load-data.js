@@ -208,12 +208,17 @@ function buildDashboardData() {
                 untrained: Math.abs(Math.trunc(n(r[5]))), score: n(r[6]), month: Math.trunc(n(r[7])) };
     }
   }
+  /* 2569-09: ไฟล์ Driver.xlsx ตัดคอลัมน์ข้อมูลส่วนตัว 8 คอลัมน์ออก (ชื่อ/นามสกุลอังกฤษ,
+     รหัสบัตรประชาชน, เลขใบขับขี่, ข้อมูลผู้รับเหมา, รูปพนักงาน, สถานะ) ทำให้คอลัมน์ที่เหลือ
+     เลื่อนมาทางซ้าย 8 ตำแหน่ง: โรงงาน/Status/TEAM/ชื่อ-นามสกุล/เดือนที่อบรม
+     ย้ายจาก index 15-19 (เดิม) มาเป็น index 7-11 (ปัจจุบัน) — รหัสโรงงาน/ชื่อ/นามสกุลไทย
+     (index 0, 5, 6) ตำแหน่งเดิมไม่เปลี่ยน */
   for (const r of rowsOf('Driver.xlsx', 'รายชื่อจบส.').slice(1)) {
     const c = code(r[0]);
     if (!c || !plants[c]) continue;
-    const st = s(r[16]);
+    const st = s(r[8]);
     if (st === 'ยังไม่อบรม' || st === 'ไม่ผ่าน') {
-      const nm = (s(r[5]) + ' ' + s(r[6])).trim() || s(r[18]);
+      const nm = (s(r[5]) + ' ' + s(r[6])).trim() || s(r[10]);
       const d = (plants[c].drv = plants[c].drv || {});
       (d.names = d.names || []).push({ n: nm, s: st });
     }
@@ -320,7 +325,57 @@ async function loadAll() {
   await Promise.all(FILES.map(f => fetchWorkbook(f, counter, FILES.length)));
   const data = buildDashboardData();
   window.DASHBOARD_DATA = data;
+  sanityCheckData(data);
   return data;
+}
+
+/* ตรวจสอบข้อมูลที่ได้แบบคร่าว ๆ หลังประมวลผลเสร็จ ถ้าเจอความผิดปกติ (เช่นบางส่วนว่างเปล่า
+   ทั้งที่ไม่ควรว่าง) จะ console.warn ไว้ให้เห็นตอนเปิด F12 — ช่วยวินิจฉัยจากระยะไกลได้ง่ายขึ้น
+   เวลาไฟล์ Excel บน GitHub เป็นเวอร์ชันเก่า/เสีย/ผิดโครงสร้างโดยไม่รู้ตัว */
+function sanityCheckData(data) {
+  const plants = data.plants || [];
+  const warn = [];
+  const totalDrv = plants.reduce((s, p) => s + ((p.drv && p.drv.names) || []).length, 0);
+  const totalEmpFail = plants.reduce((s, p) =>
+    s + ((p.emp && p.emp.list) || []).filter(e => e.r === 'ไม่ผ่าน').length, 0);
+  const totalEmpList = plants.reduce((s, p) => s + ((p.emp && p.emp.list) || []).length, 0);
+
+  /* ใช้จำนวนโรงงานที่โหลดสำเร็จ (มาจาก DATAPLANT.xlsx ซึ่งเชื่อถือได้เสมอ) เป็นตัวเทียบ
+     ถ้าโหลดโรงงานได้เยอะตามปกติ แต่รายชื่อระดับคนกลับว่างเปล่าทั้งหมด แปลว่าไฟล์/ชีตนั้น
+     น่าจะมีปัญหา (เก่า/ว่าง/โครงสร้างเปลี่ยน) โดยไม่ต้องอิงกับชีตอื่นที่อาจพังพร้อมกัน */
+  if (plants.length > 100 && totalDrv === 0) {
+    warn.push('โหลดโรงงานได้ ' + plants.length + ' แห่งตามปกติ แต่ไม่มีรายชื่อ จบส. ที่ยังไม่อบรมเลยแม้แต่คนเดียว ' +
+      '(ชีต "รายชื่อจบส." ในไฟล์ Driver.xlsx อาจเป็นไฟล์เก่า/ว่าง/โครงสร้างเปลี่ยน — ลองอัปโหลด Driver.xlsx ใหม่)');
+  }
+  if (plants.length > 100 && totalEmpList === 0) {
+    warn.push('โหลดโรงงานได้ ' + plants.length + ' แห่งตามปกติ แต่ไม่มีรายชื่อพนักงานเลยแม้แต่คนเดียว ' +
+      '(ชีต "L1L2" ในไฟล์ L1L2.xlsx อาจเป็นไฟล์เก่า/ว่าง/โครงสร้างเปลี่ยน — ลองอัปโหลด L1L2.xlsx ใหม่)');
+  } else if (plants.length > 100 && totalEmpList > 0 && totalEmpFail === 0) {
+    warn.push('มีรายชื่อพนักงานอยู่ แต่ไม่มีใครมีสถานะ "ไม่ผ่าน" เลยสักคน ' +
+      '(ปกติ หรือชีต L1L2 อาจมีปัญหา ลองเช็คถ้าคาดว่าควรมีคนไม่ผ่านอยู่บ้าง)');
+  }
+  if (warn.length) {
+    console.warn('[ตรวจสอบข้อมูล] พบความผิดปกติที่ควรเช็ค:\n- ' + warn.join('\n- '));
+    showDataWarningBanner(warn);
+  }
+}
+
+/* แถบแจ้งเตือนเล็ก ๆ มุมล่างขวา ให้เห็นได้โดยไม่ต้องเปิด F12 — ไม่บล็อกการใช้งาน แค่เตือน */
+function showDataWarningBanner(messages) {
+  const box = document.createElement('div');
+  box.id = 'dataWarnBanner';
+  box.style.cssText = 'position:fixed;bottom:16px;right:16px;max-width:380px;z-index:9998;' +
+    'background:#FFF8E8;border:1px solid #F3DFC2;border-radius:10px;padding:12px 14px;' +
+    'box-shadow:0 8px 24px rgba(0,0,0,.15);font-family:"IBM Plex Sans Thai",sans-serif;' +
+    'font-size:12px;line-height:1.6;color:#6B4E12;';
+  box.innerHTML =
+    '<div style="font-weight:700;margin-bottom:5px;display:flex;justify-content:space-between;gap:8px">' +
+      '<span>⚠️ พบข้อมูลที่ควรตรวจสอบ</span>' +
+      '<button type="button" style="border:0;background:none;cursor:pointer;font-size:14px;color:#6B4E12;line-height:1" aria-label="ปิด">×</button>' +
+    '</div>' +
+    messages.map(m => '<div style="margin-top:3px">• ' + m + '</div>').join('');
+  box.querySelector('button').addEventListener('click', () => box.remove());
+  document.body.appendChild(box);
 }
 
 /* เริ่มโหลดทันทีที่สคริปต์นี้ถูกอ่าน (ขนานกับตอนผู้ใช้กรอกฟอร์ม Login)
