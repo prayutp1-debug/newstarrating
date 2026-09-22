@@ -1379,22 +1379,9 @@ function reportSortValue(p, key) {
   return p.sc[key] || 0;
 }
 
-function renderReport() {
-  const pool = reportPool();
-  $('#rCount').innerHTML = 'พบ <b>' + pool.length + '</b> โรงงาน';
-  const host = $('#reportBody');
-  host.innerHTML = '';
-
-  const rows = pool.slice().sort((a, b) => {
-    const va = reportSortValue(a, rSort.key), vb = reportSortValue(b, rSort.key);
-    let cmp;
-    if (typeof va === 'string') cmp = va.localeCompare(vb, 'th') * rSort.dir * -1;
-    else cmp = (va - vb) * rSort.dir;
-    if (cmp !== 0) return cmp;
-    return a.name.localeCompare(b.name, 'th'); /* เรียงชื่อโรงงานเป็นตัวรอง ถ้าค่าหลักเท่ากัน */
-  });
-
-  const cols = [
+/* คอลัมน์ตารางรายงาน — ใช้ร่วมกันทั้งตารางบนจอและ PDF export เพื่อให้หน้าตาตรงกันเป๊ะ */
+function reportColumns() {
+  return [
     { h: 'บริษัท', pts: null, l: true, key: 'company', cls: 'r-company',
       f: p => '<span class="rt-company" title="' + esc(p.company) + '">' + esc(p.company) + '</span>' },
     { h: 'โรงงาน', pts: null, l: true, key: 'name',
@@ -1410,6 +1397,26 @@ function renderReport() {
     { h: 'คะแนนรวม', pts: 100, key: 'total', f: p => ({ t: '<b>' + sc(p.sc.total) + '</b>', cls: 'tot' }) },
     { h: 'ดาว', pts: null, key: 'star', f: p => ({ t: starsHTML(p.sc.star).replace('<div class="stars"', '<div class="stars rt-stars"'), cls: '' } ) },
   ]);
+}
+function reportSortedRows(pool) {
+  return pool.slice().sort((a, b) => {
+    const va = reportSortValue(a, rSort.key), vb = reportSortValue(b, rSort.key);
+    let cmp;
+    if (typeof va === 'string') cmp = va.localeCompare(vb, 'th') * rSort.dir * -1;
+    else cmp = (va - vb) * rSort.dir;
+    if (cmp !== 0) return cmp;
+    return a.name.localeCompare(b.name, 'th'); /* เรียงชื่อโรงงานเป็นตัวรอง ถ้าค่าหลักเท่ากัน */
+  });
+}
+
+function renderReport() {
+  const pool = reportPool();
+  $('#rCount').innerHTML = 'พบ <b>' + pool.length + '</b> โรงงาน';
+  const host = $('#reportBody');
+  host.innerHTML = '';
+
+  const rows = reportSortedRows(pool);
+  const cols = reportColumns();
 
   const shell = el('div', 'osec');
   const head = el('div', 'osec-head',
@@ -1582,6 +1589,107 @@ async function exportReportExcel() {
   }
 }
 $('#btnReportXlsx').addEventListener('click', exportReportExcel);
+
+/* ── ดาวน์โหลด PDF ตารางรายงานรายโรงงาน — หน้าตาเหมือนบนจอทุกประการ ──────────
+   ใช้ reportColumns()/reportSortedRows() ชุดเดียวกับตารางบนจอ จึงสีสัน/ป้ายคะแนน
+   ตรงกันโดยอัตโนมัติ รองรับหลายหน้า (แนวนอน) เพราะจำนวนแถวไม่จำกัดตามตัวกรอง        */
+function reportFilterSummary() {
+  const parts = [];
+  if (rRegion.value !== ALL) parts.push('กิจการ: ' + rRegion.value);
+  if (rTeam.value !== ALL) parts.push('ผู้จัดการผลิต: ' + rTeam.value);
+  if (rFM.value !== ALL) parts.push('ทีม FM: ' + rFM.value);
+  if (rCompany.value !== ALL) parts.push('บริษัท: ' + rCompany.value);
+  const q = rSearch.value.trim();
+  if (q) parts.push('ค้นหา "' + q + '"');
+  return parts.length ? parts.join(' · ') : 'ทุกโรงงาน (ไม่ได้กรอง)';
+}
+
+function reportPdfTableHTML(rows, cols) {
+  let h = '<table class="dt rt-tbl rpdf-tbl"><thead><tr><th class="l" style="width:28px">#</th>';
+  cols.forEach(c => {
+    h += '<th class="' + (c.l ? 'l ' : '') + (c.cls || '') + '">' +
+      '<span class="rt-h1">' + c.h + '</span>' +
+      (c.pts ? '<span class="rt-h2">(' + c.pts + ' คะแนน)</span>' : '') +
+    '</th>';
+  });
+  h += '</tr></thead><tbody>';
+  rows.forEach((p, i) => {
+    h += '<tr><td class="l rank">' + (i + 1) + '</td>';
+    cols.forEach(c => {
+      const out = c.f(p);
+      const cell = (out && typeof out === 'object') ? out : { t: out };
+      h += '<td class="' + (c.l ? 'l ' : '') + (c.cls || '') + ' ' + (cell.cls || '') + '">' + (cell.t == null ? '–' : cell.t) + '</td>';
+    });
+    h += '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+
+async function exportReportPdf() {
+  if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+    toast('โหลดไลบรารีสร้าง PDF ไม่สำเร็จ'); return;
+  }
+  const rows0 = reportSortedRows(reportPool());
+  if (!rows0.length) { toast('ไม่พบโรงงานตามตัวกรองที่เลือก — ไม่มีข้อมูลให้ดาวน์โหลด'); return; }
+
+  const btn = $('#btnReportPdf');
+  const label = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'กำลังสร้าง PDF…';
+
+  const stage = $('#pdfStage');
+  const rows = rows0;
+  const cols = reportColumns();
+  const today = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  stage.innerHTML =
+    '<div class="rpdf-doc">' +
+      '<div class="pd-head">' +
+        '<div class="pd-to">รายงานคะแนนรายโรงงาน</div>' +
+        '<div class="pd-sub">' + esc(reportFilterSummary()) + ' · พบ ' + rows.length + ' โรงงาน · ' +
+          'ออกรายงานวันที่ ' + today + '</div>' +
+      '</div>' +
+      '<div class="rpdf-tbl-wrap">' + reportPdfTableHTML(rows, cols) + '</div>' +
+    '</div>';
+
+  try {
+    const node = $('.rpdf-doc', stage);
+    const canvas = await html2canvas(node, {
+      scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+      windowWidth: node.scrollWidth,
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const m = 8;
+    const iw = pw - m * 2;
+    const ih = (canvas.height * iw) / canvas.width;
+
+    let left = ih, y = 0, page = 0;
+    while (left > 0) {
+      if (page > 0) pdf.addPage();
+      pdf.addImage(canvas, 'JPEG', m, m - y, iw, ih, undefined, 'FAST');
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pw, m, 'F');
+      pdf.rect(0, ph - m, pw, m, 'F');
+      left -= (ph - m * 2);
+      y += (ph - m * 2);
+      page++;
+      if (page > 60) break; /* กันหลุดกรณีข้อมูลมากผิดปกติ */
+    }
+    const scope = rCompany.value !== ALL ? rCompany.value : 'ทุกบริษัท';
+    pdf.save('รายงานรายโรงงาน_' + scope.replace(/[\\/:*?"<>|]/g, '') + '_' + today.replace(/\s+/g, '') + '.pdf');
+    toast('ดาวน์โหลด PDF เรียบร้อย (' + page + ' หน้า)');
+  } catch (err) {
+    console.error(err);
+    toast('สร้าง PDF ไม่สำเร็จ — ลองใหม่อีกครั้ง');
+  } finally {
+    stage.innerHTML = '';
+    btn.disabled = false; btn.innerHTML = label;
+  }
+}
+$('#btnReportPdf').addEventListener('click', exportReportPdf);
 
 /* ═════════════════════════════ TAB 3 : หักคะแนน ═══════════════════════════ */
 function renderDeduct() {

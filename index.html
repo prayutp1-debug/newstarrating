@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=21">
+<link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
 
@@ -127,7 +127,7 @@
   <div class="side-foot">
     <div class="side-stat"><span>โรงงานทั้งหมด</span><b id="sideTotal">–</b></div>
     <div class="side-stat"><span>คะแนนเต็ม</span><b>100</b></div>
-    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 21</span></p>
+    <p class="side-note">ข้อมูลอ้างอิงจากไฟล์ Excel ในโฟลเดอร์เดียวกัน<br><span class="ver">เวอร์ชัน 22</span></p>
     <div class="side-user" id="sideUser" hidden>
       <span class="su-name" id="userChip"></span>
       <button id="btnChangePw" title="เปลี่ยนรหัสผ่าน" aria-label="เปลี่ยนรหัสผ่าน">
@@ -257,6 +257,10 @@
           <input type="search" id="rSearch" placeholder="ชื่อโรงงาน หรือรหัส" autocomplete="off">
         </label>
         <div class="filter-count" id="rCount"></div>
+        <button class="btn btn-ghost" id="btnReportPdf" style="margin-left:0">
+          <svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          ดาวน์โหลด PDF
+        </button>
         <button class="btn btn-pdf" id="btnReportXlsx" style="margin-left:0">
           <svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
           ดาวน์โหลด Excel
@@ -324,8 +328,8 @@
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/exceljs.min.js"></script>
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="load-data.js?v=21"></script>
-<script src="app.js?v=21"></script>
-<script src="auth.js?v=21"></script>
+<script src="load-data.js?v=22"></script>
+<script src="app.js?v=22"></script>
+<script src="auth.js?v=22"></script>
 </body>
 </html>

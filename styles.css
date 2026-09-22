@@ -648,3 +648,20 @@ table.dt .sub{display:block;font-size:10.5px;color:var(--muted);font-family:var(
   animation:dl-spin .8s linear infinite;
 }
 @keyframes dl-spin{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════ PDF ตารางรายงานรายโรงงาน ═══════════════════════ */
+.rpdf-doc{width:1400px;background:#fff;padding:20px 22px 16px;font-family:var(--sans);box-sizing:border-box}
+.rpdf-doc .pd-sub{margin-top:4px}
+.rpdf-tbl-wrap{margin-top:14px}
+.rpdf-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.rpdf-tbl th,.rpdf-tbl td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rpdf-tbl th{background:#F7F9F8;text-align:right}
+.rpdf-tbl th.l,.rpdf-tbl td.l{text-align:left}
+.rpdf-tbl .rt-h1{display:block;font-size:11px;font-weight:600}
+.rpdf-tbl .rt-h2{display:block;font-size:9px;font-weight:500;color:var(--muted);margin-top:1px}
+.rpdf-tbl td{font-family:var(--mono);text-align:right}
+.rpdf-tbl td.l{font-family:var(--sans);text-align:left}
+.rpdf-tbl td.tot{font-weight:600;background:#F7F9F8}
+.rpdf-tbl .rt-stars{gap:1px}
+.rpdf-tbl .rt-stars svg{width:13px;height:13px}
+.rpdf-tbl .rt-company,.rpdf-tbl .plant{max-width:none;overflow:visible;text-overflow:clip}
