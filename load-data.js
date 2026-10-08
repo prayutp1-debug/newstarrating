@@ -151,6 +151,32 @@ function buildDashboardData() {
     }
   }
 
+  // ไฟล์ CPK.xlsx (ชีต Q-Score) คำนวณคะแนนรายเดือนมาเองด้วยสูตรเดิมที่ปิดบนไว้แค่ 1.00
+  // ("ผ่านเกณฑ์ CPK อยู่ระหว่าง 0.81-1.00 ได้ 1.25") ทำให้ผล CPK ที่สูงกว่า 1.00 (เช่น 1.15)
+  // ถูกให้ 0 คะแนนทั้งที่ยังผ่านเกณฑ์ขั้นต่ำ — จึงคำนวณคะแนนรายเดือนใหม่ฝั่ง JS แทนค่าจากไฟล์
+  // ตามเกณฑ์ที่แก้ไข: มากกว่า 0.81 ขึ้นไปไม่จำกัดเพดาน ก็ยังได้ 1.25 คะแนนเช่นเดิม
+  // (ให้คะแนนเฉพาะเดือน เม.ย.–พ.ย. ตามกติกา ส่วน ม.ค.–มี.ค. ไม่มีคะแนนเหมือนเดิม)
+  const CPK_LOW = 0.55, CPK_BEST_LOW = 0.70, CPK_BEST_HIGH = 0.80, CPK_MONTH_MAX = 2.5;
+  const cpkMonthScore = v => {
+    if (!v || v < CPK_LOW) return 0;
+    if (v >= CPK_BEST_LOW && v <= CPK_BEST_HIGH) return CPK_MONTH_MAX;
+    return 1.25;   // 0.55–0.69 หรือ 0.81 ขึ้นไป (ไม่มีเพดานบนแล้ว)
+  };
+  for (const c of Object.keys(plants)) {
+    const p = plants[c];
+    const q = p.cpk;
+    if (!q || !q.m) continue;
+    q.score = q.score || [];
+    let total = 0;
+    for (let i = 3; i <= 10; i++) {           // เม.ย.(3) – พ.ย.(10)
+      const v = cpkMonthScore(q.m[i] || 0);
+      q.score[i] = v;
+      total += v;
+    }
+    q.total = Math.round(total * 100) / 100;
+    q.sum = Math.round((q.total + (q.dz || 0) + (q.manual || 0)) * 100) / 100;
+  }
+
   // --------------------------------------------------------------------- 4. NPS
   for (const r of rowsOf('ReportNPS.xlsx', 'NPS').slice(1)) {
     const p = ensure(r[3], s(r[4]), s(r[0]), s(r[2]));
@@ -305,7 +331,7 @@ function buildDashboardData() {
     rules: {
       saleTiers: [[40000, 15], [30000, 13], [20000, 11], [10000, 9], [0, 7]],
       admixFull: 0.9, admixPartial: 0.8,
-      cpkLow: 0.55, cpkHigh: 1.00, cpkBestLow: 0.70, cpkBestHigh: 0.80,
+      cpkLow: 0.55, cpkBestLow: 0.70, cpkBestHigh: 0.80,   // ไม่มีเพดานบนแล้ว (>0.81 ได้ 1.25 ไม่จำกัด)
       cpkMonthMax: 2.5, npsPass: 75, npsMonthScore: 2,
       empMin: 3, envFull: 10, sfPlantDeadline: 8,
       max: { sale: 15, admix: 5, qual: 20, safety: 20, nps: 18, emp: 12, env: 10, total: 100 },
