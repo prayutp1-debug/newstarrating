@@ -179,7 +179,8 @@ for r in rows[4:]:
 for r in load('Safety.xlsx', 'Safety-Plant')[1:]:
     p = ensure(r[1], s(r[2]), s(r[0]))
     if p:
-        p['sfPlant'] = {'sum': n(r[16]), 'month': int(n(r[17])), 'score': n(r[18])}
+        # FC27 มี 12 ข้อ: ตรวจแล้วแต่ไม่ครบ 12 ข้อ ได้ 0 คะแนน + เก็บจำนวนข้อที่ขาด
+        p['sfPlant'] = {'sum': n(r[16]), 'month': int(n(r[17])), 'raw': n(r[18])}
 
 for r in load('Safety.xlsx', 'Safety-Truck')[1:]:
     p = ensure(r[1], s(r[2]), s(r[0]))
@@ -268,6 +269,16 @@ for c in order:
         psd = e.get('pass', 0) or 0
         e['scoreCount'] = 9.0 if cnt >= 2 else 0.0
         e['scoreL1L2'] = 3.0 if psd >= 2 else min(psd, 3)
+
+# FC27: ทั่วไปต้องครบ 12 ข้อ ไม่ครบ = 0 คะแนน · Type M ตรวจ 7 ข้อก็ได้คะแนนเต็ม
+for p in plants.values():
+    f = p.get('sfPlant')
+    if not f:
+        continue
+    f['req'] = 7 if p.get('type') == 'M' else 12
+    f['missing'] = max(0, f['req'] - f['sum']) if f['month'] > 0 else 0
+    f['score'] = 0 if f['missing'] > 0 else f.pop('raw')
+    f.pop('raw', None)
 
 # -------------------------------------------------------------- total scoring
 for c in order:

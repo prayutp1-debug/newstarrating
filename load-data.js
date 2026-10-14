@@ -214,7 +214,12 @@ function buildDashboardData() {
   // --------------------------------------------------------------- 6. SAFETY
   for (const r of rowsOf('Safety.xlsx', 'Safety-Plant').slice(1)) {
     const p = ensure(r[1], s(r[2]), s(r[0]));
-    if (p) p.sfPlant = { sum: n(r[16]), month: Math.trunc(n(r[17])), score: n(r[18]) };
+    if (p) {
+      // FC27 มี 12 ข้อ: ตรวจแล้วแต่ผ่านไม่ครบ 12 ข้อ ต้องได้ 0 คะแนน (ไฟล์ Excel ให้คะแนนเต็มทั้งที่ข้อไม่ครบ
+      // จึงคำนวณใหม่ฝั่ง JS) และเก็บจำนวนข้อที่ขาดไว้แสดงเป็นหมายเหตุ
+      const sum = n(r[16]), month = Math.trunc(n(r[17]));
+      p.sfPlant = { sum, month, raw: n(r[18]) };   // missing/score/req คำนวณหลังรู้ TYPE (ดูด้านล่าง)
+    }
   }
   for (const r of rowsOf('Safety.xlsx', 'Safety-Truck').slice(1)) {
     const p = ensure(r[1], s(r[2]), s(r[0]));
@@ -304,6 +309,17 @@ function buildDashboardData() {
       e.scoreCount = cnt >= 2 ? 9 : 0;
       e.scoreL1L2 = psd >= 2 ? 3 : Math.min(psd, 3);
     }
+  }
+
+  // FC27: โรงงานทั่วไปต้องผ่านครบ 12 ข้อ ถ้าไม่ครบ = ไม่ผ่าน 0 คะแนน
+  // ยกเว้นโรงงาน Type M ตรวจแค่ 7 ข้อก็ได้คะแนนเต็ม (ไม่ต้องมีหมายเหตุ)
+  for (const c of order2) {
+    const f = plants[c].sfPlant;
+    if (!f) continue;
+    f.req = plants[c].type === 'M' ? 7 : 12;
+    f.missing = f.month > 0 ? Math.max(0, f.req - f.sum) : 0;
+    f.score = f.missing > 0 ? 0 : f.raw;
+    delete f.raw;
   }
 
   // -------------------------------------------------------------- total scoring

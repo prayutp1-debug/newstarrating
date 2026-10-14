@@ -88,6 +88,10 @@ const cpkBest = v => v >= RULES.cpkBestLow && v <= RULES.cpkBestHigh;
 const cpkJudge = v => (!v ? null : (v < RULES.cpkLow ? false : (cpkBest(v) ? true : null)));
 const npsPass  = v => v >= RULES.npsPass;
 const inspected  = p => (p.sfPlant && p.sfPlant.month > 0);
+/* FC27: ตรวจแล้วและผ่านครบ 12 ข้อ จึงถือว่าผ่าน — ถ้าไม่ครบ = ไม่ผ่าน ได้ 0 คะแนน */
+const sfMissing  = p => (inspected(p) ? (p.sfPlant.missing || 0) : 0);
+const sfPass     = p => inspected(p) && sfMissing(p) === 0;
+const sfNote     = p => 'ผลตรวจไม่ครบ ขาด ' + sfMissing(p) + ' ข้อ';
 const truckDone  = p => !!(p.sfTruck && (p.sfTruck.h1 || p.sfTruck.h2));
 const envDone    = p => !!(p.env && (p.env.score > 0 || p.env.sum > 0));
 const drvComplete= p => !!(p.drv && p.drv.total > 0 && p.drv.untrained === 0);
@@ -528,7 +532,10 @@ function metricsHTML(p) {
         '<div class="sf-head"><h4>โรงงาน (FC27)</h4><span class="sf-pt">' + sc(sfp.score || 0) + ' / 15</span></div>' +
         '<div class="kv"><span>เดือนที่ตรวจ</span><b>' +
           (sfp.month ? esc(monthName(sfp.month)) : '<span class="pill pill-no">ยังไม่ตรวจ</span>') + '</b></div>' +
-        '<div class="rule">ตรวจภายใน ส.ค. = 15 · หลัง ส.ค. = 10 คะแนน</div>' +
+        (inspected(p) ? '<div class="kv"><span>ผลตรวจ</span><b>' + (sfPass(p)
+          ? '<span class="pill pill-ok">ผ่านครบ ' + (sfp.req || 12) + ' ข้อ</span>' : '<span class="pill pill-no">ไม่ผ่าน</span>') + '</b></div>' : '') +
+        (sfMissing(p) ? '<div class="rule neg">' + sfNote(p) + ' · ได้ 0 คะแนน</div>' : '') +
+        '<div class="rule">ตรวจภายใน ส.ค. = 15 · หลัง ส.ค. = 10 คะแนน · ต้องผ่านครบ 12 ข้อ (Type M = 7 ข้อ)</div>' +
       '</div>' +
       '<div class="sf-col">' +
         '<div class="sf-head"><h4>รถโม่ (F18-464)</h4><span class="sf-pt">' + sc(sft.score || 0) + ' / 2</span></div>' +
@@ -619,7 +626,9 @@ function chartsShellHTML(p) {
     '<div class="status-grid">' +
       '<div class="status-item"><h4>โรงงาน (FC27)</h4>' +
         (inspected(p)
-          ? '<span class="pill pill-ok">ผ่าน</span><div style="font-size:11.5px;color:var(--muted);margin-top:6px">ตรวจเดือน' + esc(monthName(sfp.month)) + ' · ' + sc(sfp.score || 0) + ' คะแนน</div>'
+          ? (sfPass(p) ? '<span class="pill pill-ok">ผ่าน</span>' : '<span class="pill pill-no">ไม่ผ่าน</span>') +
+            '<div style="font-size:11.5px;color:var(--muted);margin-top:6px">ตรวจเดือน' + esc(monthName(sfp.month)) + ' · ' + sc(sfp.score || 0) + ' คะแนน' +
+            (sfPass(p) ? '' : '<br><span style="color:var(--red,#C8102E)">' + sfNote(p) + '</span>') + '</div>'
           : '<span class="pill pill-no">ยังไม่ตรวจ</span>') + '</div>' +
       '<div class="status-item"><h4>รถโม่ (F18-464)</h4>' +
         (truckDone(p)
@@ -918,7 +927,7 @@ function pdfDocHTML(p) {
     '</div>' +
 
     '<div class="pd-status">' +
-      st('Safety โรงงาน', inspected(p), inspected(p) ? 'ตรวจเดือน' + monthName(sfp.month) : 'ยังไม่ตรวจ') +
+      st('Safety โรงงาน', sfPass(p), inspected(p) ? 'ตรวจเดือน' + monthName(sfp.month) + (sfPass(p) ? '' : ' · ' + sfNote(p)) : 'ยังไม่ตรวจ') +
       st('Safety รถโม่', truckDone(p), 'H1 ' + (sft.h1 ? 'ผ่าน' : '–') + ' · H2 ' + (sft.h2 ? 'ผ่าน' : '–')) +
       st('อบรม จบส.', drvComplete(p), 'อบรม ' + num(drv.trained || 0) + ' / ' + num(drv.total || 0) + ' คน') +
       st('สิ่งแวดล้อม', (env.score || 0) >= RULES.envFull, sc(env.score || 0) + ' / 10 คะแนน') +
@@ -1242,14 +1251,16 @@ function renderOverview() {
     const todo = pool.filter(p => !inspected(p));
     const doneCols = [plantCol,
       { h: 'เดือนที่ตรวจ', l: true, f: p => monthName(p.sfPlant.month) },
-      { h: 'ผลตรวจ (ข้อ)', f: p => sc(p.sfPlant.sum) },
+      { h: 'ผลตรวจ (ข้อ)', f: p => sc(p.sfPlant.sum) + ' / ' + (p.sfPlant.req || 12) },
+      { h: 'ผล', l: true, f: p => sfPass(p) ? '<span class="pill pill-ok">ผ่าน</span>' : '<span class="pill pill-no">ไม่ผ่าน</span>' },
+      { h: 'หมายเหตุ', l: true, f: p => sfPass(p) ? '–' : '<span class="neg-txt" style="color:#C8102E">' + sfNote(p) + '</span>' },
       { h: 'คะแนน', f: p => ({ t: '<b>' + sc(p.sfPlant.score) + '</b> / 15', cls: 'tot' }) }];
     const todoCols = [plantCol,
       { h: 'ทีมงาน', l: true, f: p => esc(p.team) },
       { h: 'สถานะ', l: true, f: () => '<span class="pill pill-no">ยังไม่ตรวจ</span>' }];
     host.appendChild(section('Safety — โรงงาน (FC27)', '15 คะแนน',
-      'ตรวจภายในเดือนสิงหาคม = 15 คะแนน · หลังสิงหาคม = 10 คะแนน',
-      [{ label: 'ตรวจครบ', count: done.length, render: b => pagedTable(b, doneCols, done) },
+      'ตรวจภายในเดือนสิงหาคม = 15 คะแนน · หลังสิงหาคม = 10 คะแนน · ผลตรวจไม่ครบ 12 ข้อ = ไม่ผ่าน 0 คะแนน (Type M ตรวจ 7 ข้อ)',
+      [{ label: 'ตรวจแล้ว', count: done.length, render: b => pagedTable(b, doneCols, done) },
        { label: 'ยังไม่ตรวจ', count: todo.length, render: b => pagedTable(b, todoCols, todo,
           { emptyTitle: 'ตรวจครบทุกโรงงานแล้ว', emptyText: 'ไม่มีโรงงานค้างตรวจในกลุ่มที่เลือก' }) }]));
   }
