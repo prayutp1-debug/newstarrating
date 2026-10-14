@@ -476,7 +476,7 @@ function metricsHTML(p) {
 
   /* 2 การสั่งวัตถุดิบ */
   const bAdmix = box('b-admix', 'การสั่งวัตถุดิบ', '5 คะแนน', p.sc.admix, 5,
-    '<div class="kv"><span>สัดส่วนน้ำยา</span><b>' + pct(admix.total) + '</b></div>' +
+    '<div class="kv"><span>สัดส่วนน้ำยา</span><b>' + pct(admix.bench) + '</b></div>' +
     '<div class="rule">ตั้งแต่ 90% ของยอดผลิต = 5 คะแนน · 80–89.9% = 4 คะแนน</div>');
 
   /* 3 คุณภาพ — แสดงเฉพาะคะแนน CPK พร้อมข้อความกติกา */
@@ -892,7 +892,7 @@ function pdfDocHTML(p) {
 
     '<div class="pd-grid">' +
       cell('ยอดขาย', '15', s.sale, 15, num(sale.total) + ' ลบ.ม.') +
-      cell('การสั่งวัตถุดิบ', '5', s.admix, 5, pct(admix.total) + ' ของยอดผลิต') +
+      cell('การสั่งวัตถุดิบ', '5', s.admix, 5, pct(admix.bench) + ' ของยอดผลิต') +
       cell('คุณภาพ', '20', cpk.total || 0, 20, ((cpk.score || []).filter(v => v > 0).length) + ' เดือนที่ได้คะแนน') +
       cell('การบริการ (NPS)', '18', s.nps, 18, (nps.pass || 0) + ' เดือนผ่านเกณฑ์') +
       cell('พนักงาน', '12', s.emp, 12, num(emp.count || 0) + ' คน · ผ่าน ' + num(emp.pass || 0) + ' คน') +
@@ -1158,6 +1158,7 @@ function renderOverview() {
       monthCols(0, 11, (p, m) => (p.admix && p.admix.m ? p.admix.m[m] : 0),
         v => v >= RULES.admixFull, v => num(v * 100, 1) + '%'),
       [{ h: 'รวม', f: p => ({ t: pct(p.admix ? p.admix.total : 0), cls: 'tot' }) },
+       { h: 'เทียบทั้งบริษัท', f: p => ({ t: pct(p.admix ? p.admix.bench : 0), cls: 'tot' }) },
        { h: 'คะแนน', f: p => ({ t: '<b>' + sc(p.sc.admix) + '</b> / 5', cls: 'tot' }) }]);
     host.appendChild(section('ยอดสั่งน้ำยา (Admix)', '5 คะแนน',
       'ไฮไลท์แดงคือเดือนที่ต่ำกว่าเกณฑ์ 90% ของยอดผลิต',
@@ -1546,7 +1547,7 @@ async function exportReportExcel() {
     const ws2 = makeSheet('รายละเอียด', [
       'กิจการ', 'บริษัท', 'โรงงาน',
       'ยอดขายสะสม (ลบ.ม.)', 'คะแนนยอดขาย',
-      '% สั่งวัตถุดิบเฉลี่ย', 'คะแนนวัตถุดิบ',
+      '% สั่งวัตถุดิบเฉลี่ย', '% เทียบทั้งบริษัท', 'คะแนนวัตถุดิบ',
       'คะแนน Quality', 'คะแนน Dangerous Zone', 'คะแนน Manual', 'คะแนนคุณภาพรวม',
       'คะแนน Safety โรงงาน', 'คะแนน Safety รถโม่', 'คะแนน Safety อบรม จบส.', 'คะแนน Safety รวม',
       'เดือนผ่านเกณฑ์ NPS', 'คะแนน NPS',
@@ -1554,14 +1555,14 @@ async function exportReportExcel() {
       'ผลตรวจสิ่งแวดล้อม (/10)', 'คะแนนสิ่งแวดล้อม',
       'หักคะแนน (ไม่ร่วมมือ)', 'หักคะแนน (ร้องเรียน)', 'รวมหักคะแนน',
       'คะแนนรวม', 'ดาว',
-    ], [13, 26, 24, 15, 11, 13, 11, 11, 13, 9, 12, 13, 12, 15, 12, 13, 10, 11, 11, 11, 15, 12, 13, 13, 11, 11, 7]);
+    ], [13, 26, 24, 15, 11, 13, 13, 11, 11, 13, 9, 12, 13, 12, 15, 12, 13, 10, 11, 11, 11, 15, 12, 13, 13, 11, 11, 7]);
     rows.forEach(p => {
       const sale = p.sale || {}, admix = p.admix || {}, cpk = p.cpk || {}, nps = p.nps || {}, emp = p.emp || {},
             sfp = p.sfPlant || {}, sft = p.sfTruck || {}, drv = p.drv || {}, env = p.env || {}, ded = p.ded || {};
       addDataRow(ws2, [
         p.region, p.company, p.name,
         sale.total || 0, p.sc.sale,
-        Math.round((admix.total || 0) * 1000) / 10, p.sc.admix,
+        Math.round((admix.total || 0) * 1000) / 10, Math.round((admix.bench || 0) * 1000) / 10, p.sc.admix,
         cpk.total || 0, cpk.dz || 0, cpk.manual || 0, p.sc.qual,
         sfp.score || 0, sft.score || 0, drv.score || 0, p.sc.safety,
         nps.pass || 0, p.sc.nps,
@@ -1569,7 +1570,7 @@ async function exportReportExcel() {
         env.sum || 0, p.sc.env,
         Math.abs(ded.coop || 0), Math.abs(ded.comp || 0), p.sc.ded,
         p.sc.total, p.sc.star,
-      ], 26);
+      ], 27);
     });
 
     const buf = await wb.xlsx.writeBuffer();
