@@ -1516,7 +1516,7 @@ async function exportReportExcel() {
     const border = { top: thin, left: thin, bottom: thin, right: thin };
     const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0E1F2A' } };
     const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-    const leftCols = new Set([1, 2, 3]); /* กิจการ / บริษัท / โรงงาน ชิดซ้าย ที่เหลือกึ่งกลาง */
+    const leftCols = new Set([1, 2, 3, 4]); /* กิจการ / บริษัท / รหัสโรงงาน / โรงงาน ชิดซ้าย ที่เหลือกึ่งกลาง */
 
     function makeSheet(name, headers, widths) {
       const ws = wb.addWorksheet(name);
@@ -1542,21 +1542,21 @@ async function exportReportExcel() {
 
     /* ── Sheet 1 : รวมคะแนน ─────────────────────────────────────────────── */
     const ws1 = makeSheet('รวมคะแนน', [
-      'กิจการ', 'บริษัท', 'โรงงาน',
+      'กิจการ', 'บริษัท', 'รหัสโรงงาน', 'โรงงาน',
       'ยอดขาย (15)', 'วัตถุดิบ (5)', 'คุณภาพ (20)', 'Safety (20)', 'NPS (18)',
       'พนักงาน (12)', 'สิ่งแวดล้อม (10)', 'หักคะแนน', 'คะแนนรวม (100)', 'ดาว',
-    ], [13, 26, 24, 11, 11, 11, 11, 10, 11, 12, 11, 13, 7]);
+    ], [13, 26, 12, 24, 11, 11, 11, 11, 10, 11, 12, 11, 13, 7]);
     rows.forEach(p => {
       addDataRow(ws1, [
-        p.region, p.company, p.name,
+        p.region, p.company, p.code, p.name,
         p.sc.sale, p.sc.admix, p.sc.qual, p.sc.safety, p.sc.nps, p.sc.emp, p.sc.env, p.sc.ded,
         p.sc.total, p.sc.star,
-      ], 12);
+      ], 13);
     });
 
     /* ── Sheet 2 : รายละเอียด ───────────────────────────────────────────── */
     const ws2 = makeSheet('รายละเอียด', [
-      'กิจการ', 'บริษัท', 'โรงงาน',
+      'กิจการ', 'บริษัท', 'รหัสโรงงาน', 'โรงงาน',
       'ยอดขายสะสม (ลบ.ม.)', 'คะแนนยอดขาย',
       '% สั่งวัตถุดิบเฉลี่ย', '% เทียบทั้งบริษัท', 'คะแนนวัตถุดิบ',
       'คะแนน Quality', 'คะแนน Dangerous Zone', 'คะแนน Manual', 'คะแนนคุณภาพรวม',
@@ -1566,12 +1566,12 @@ async function exportReportExcel() {
       'ผลตรวจสิ่งแวดล้อม (/10)', 'คะแนนสิ่งแวดล้อม',
       'หักคะแนน (ไม่ร่วมมือ)', 'หักคะแนน (ร้องเรียน)', 'รวมหักคะแนน',
       'คะแนนรวม', 'ดาว',
-    ], [13, 26, 24, 15, 11, 13, 13, 11, 11, 13, 9, 12, 13, 12, 15, 12, 13, 10, 11, 11, 11, 15, 12, 13, 13, 11, 11, 7]);
+    ], [13, 26, 12, 24, 15, 11, 13, 13, 11, 11, 13, 9, 12, 13, 12, 15, 12, 13, 10, 11, 11, 11, 15, 12, 13, 13, 11, 11, 7]);
     rows.forEach(p => {
       const sale = p.sale || {}, admix = p.admix || {}, cpk = p.cpk || {}, nps = p.nps || {}, emp = p.emp || {},
             sfp = p.sfPlant || {}, sft = p.sfTruck || {}, drv = p.drv || {}, env = p.env || {}, ded = p.ded || {};
       addDataRow(ws2, [
-        p.region, p.company, p.name,
+        p.region, p.company, p.code, p.name,
         sale.total || 0, p.sc.sale,
         Math.round((admix.total || 0) * 1000) / 10, Math.round((admix.bench || 0) * 1000) / 10, p.sc.admix,
         cpk.total || 0, cpk.dz || 0, cpk.manual || 0, p.sc.qual,
@@ -1581,7 +1581,7 @@ async function exportReportExcel() {
         env.sum || 0, p.sc.env,
         Math.abs(ded.coop || 0), Math.abs(ded.comp || 0), p.sc.ded,
         p.sc.total, p.sc.star,
-      ], 27);
+      ], 28);
     });
 
     const buf = await wb.xlsx.writeBuffer();
